@@ -1,0 +1,361 @@
+// BureauOS — production database schema (migration target).
+//
+// STATUS: NOT WIRED IN THE LOCAL MVP. The running app persists to a
+// Zod-validated localStorage data layer (lib/store.ts) whose entities mirror
+// these models 1:1. When moving to a hosted backend:
+//   1. `npm i prisma @prisma/client` and set DATABASE_URL (.env.example).
+//   2. Start with SQLite locally (provider = "sqlite"), or go straight to
+//      Postgres (Supabase / Neon / RDS) — the schema is Postgres-compatible.
+//   3. Replace lib/store.ts action bodies with API routes calling Prisma;
+//      components keep the same action/selector interface.
+
+datasource db {
+  provider = "postgresql" // or "sqlite" for local development
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  // Auth handled by Clerk/Supabase/Auth.js in production — no local password.
+  authProviderId String? @unique
+  role          Role     @default(CUSTOMER)
+  usState       String   @default("")
+  phone         String   @default("")
+  createdAt     DateTime @default(now())
+
+  notificationPrefs NotificationPreference?
+  cases             Case[]
+  subscriptions     Subscription[]
+  tickets           SupportTicket[]
+  reviews           ReviewRequest[]
+  files             UploadedFile[]
+  acceptances       DisclaimerAcceptance[]
+  notifications     NotificationEvent[]
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+model NotificationPreference {
+  id                        String  @id @default(cuid())
+  user                      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                    String  @unique
+  emailReminders            Boolean @default(true)
+  smsReminders              Boolean @default(false)
+  deadlineAlerts            Boolean @default(true)
+  caseStatusAlerts          Boolean @default(true)
+  missingDocumentReminders  Boolean @default(true)
+  supportTicketUpdates      Boolean @default(true)
+}
+
+model Case {
+  id            String     @id @default(cuid())
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  navigatorSlug String // content-defined navigator (lib/navigators)
+  title         String
+  status        CaseStatus @default(INTAKE)
+  priority      Priority   @default(MEDIUM)
+  serviceTier   ServiceTier @default(SELF_SERVICE)
+  assignedTo    String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  intakeCompleted Boolean @default(false)
+  intakeStep      Int     @default(0)
+
+  answers    IntakeAnswer[]
+  plan       ActionPlan?
+  tasks      Task[]
+  documents  DocumentRequirement[]
+  deadlines  Deadline[]
+  letters    GeneratedLetter[]
+  timeline   TimelineEvent[]
+  files      UploadedFile[]
+  adminNotes AdminNote[]
+  reviews    ReviewRequest[]
+  tickets    SupportTicket[]
+}
+
+enum CaseStatus {
+  INTAKE
+  PLANNING
+  IN_PROGRESS
+  WAITING
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ServiceTier {
+  SELF_SERVICE
+  ASSISTED_REVIEW
+  DONE_WITH_YOU
+  PRIORITY
+}
+
+model IntakeAnswer {
+  id         String @id @default(cuid())
+  case       Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId     String
+  questionId String // question ids defined in navigator content
+  value      Json
+
+  @@unique([caseId, questionId])
+}
+
+model ActionPlan {
+  id                       String   @id @default(cuid())
+  case                     Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId                   String   @unique
+  generatedAt              DateTime @default(now())
+  situationSummary         String
+  priority                 Priority
+  nextActions              Json // [{title, detail}]
+  riskFlags                Json // [{label, detail, severity}]
+  suggestedLetterTemplateId String?
+  disclaimer               String
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId      String
+  title       String
+  description String?
+  category    String?
+  done        Boolean   @default(false)
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model DocumentRequirement {
+  id          String         @id @default(cuid())
+  case        Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId      String
+  name        String
+  description String?
+  required    Boolean        @default(false)
+  status      DocumentStatus @default(NEEDED)
+}
+
+enum DocumentStatus {
+  NEEDED
+  REQUESTED
+  OBTAINED
+  NOT_APPLICABLE
+}
+
+model UploadedFile {
+  id         String     @id @default(cuid())
+  case       Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  name       String
+  fileType   String
+  sizeBytes  Int
+  category   String // FileCategory enum values (lib/types.ts)
+  storageKey String // S3/Supabase Storage/R2 object key
+  status     FileStatus @default(PENDING_REVIEW)
+  notes      String     @default("")
+  uploadedAt DateTime   @default(now())
+}
+
+enum FileStatus {
+  UPLOADED
+  PENDING_REVIEW
+  VERIFIED
+  REJECTED
+}
+
+model GeneratedLetter {
+  id         String   @id @default(cuid())
+  case       Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId     String
+  templateId String
+  title      String
+  body       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Deadline {
+  id       String   @id @default(cuid())
+  case     Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId   String
+  title    String
+  date     DateTime
+  note     String?
+  verified Boolean  @default(false)
+}
+
+model TimelineEvent {
+  id     String   @id @default(cuid())
+  case   Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId String
+  type   String // TimelineEventType values
+  title  String
+  detail String?
+  date   DateTime @default(now())
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String
+  tier             ServiceTier        @default(SELF_SERVICE)
+  status           SubscriptionStatus @default(ACTIVE)
+  stripeCustomerId String?            @unique
+  stripeSubId      String?            @unique
+  startedAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  payments         Payment[]
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+}
+
+model Payment {
+  id             String       @id @default(cuid())
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  subscriptionId String
+  stripePaymentId String?     @unique
+  label          String
+  amountCents    Int
+  currency       String       @default("usd")
+  createdAt      DateTime     @default(now())
+}
+
+model AdminNote {
+  id         String   @id @default(cuid())
+  case       Case?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId     String?
+  ticket     SupportTicket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId   String?
+  review     ReviewRequest? @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reviewId   String?
+  authorName String
+  body       String
+  createdAt  DateTime @default(now())
+}
+
+model SupportTicket {
+  id        String       @id @default(cuid())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  case      Case?        @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  caseId    String?
+  category  String
+  subject   String
+  status    TicketStatus @default(OPEN)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  messages  TicketMessage[]
+  internalNotes AdminNote[]
+}
+
+enum TicketStatus {
+  OPEN
+  WAITING_ON_CUSTOMER
+  IN_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+model TicketMessage {
+  id         String        @id @default(cuid())
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId   String
+  authorRole String // "customer" | "staff"
+  authorName String
+  body       String
+  createdAt  DateTime      @default(now())
+}
+
+model ReviewRequest {
+  id            String       @id @default(cuid())
+  case          Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  status        ReviewStatus @default(REQUESTED)
+  customerNotes String
+  requestedAt   DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  reviewerNotes AdminNote[]
+}
+
+enum ReviewStatus {
+  NOT_REQUESTED
+  REQUESTED
+  AWAITING_DOCUMENTS
+  IN_REVIEW
+  CHANGES_REQUESTED
+  COMPLETED
+  DECLINED
+}
+
+model DisclaimerAcceptance {
+  id                 String   @id @default(cuid())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  caseId             String?
+  version            String
+  acceptedTerms      Boolean
+  acceptedPrivacy    Boolean
+  acceptedDisclaimer Boolean
+  acceptedAt         DateTime @default(now())
+
+  @@index([userId, version])
+}
+
+model NotificationEvent {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  type      String // NotificationEventType values
+  channel   String // "email" | "sms"
+  subject   String
+  body      String
+  status    String   @default("queued") // queued | sent | failed
+  createdAt DateTime @default(now())
+}
+
+model JurisdictionRule {
+  id                String   @id @default(cuid())
+  state             String
+  county            String?
+  city              String?
+  agency            String
+  navigatorSlug     String
+  category          String
+  title             String
+  summary           String
+  deadlineType      String?
+  deadlineDetail    String?
+  requiredDocuments Json // string[]
+  processSteps      Json // string[]
+  officialLinks     Json // {label, url}[]
+  disclaimer        String
+  lastUpdated       DateTime
+
+  @@index([state, navigatorSlug])
+}

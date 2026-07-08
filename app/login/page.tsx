@@ -1,0 +1,129 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Landmark, LogIn, ShieldCheck, UserRound } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { StoreSeeder } from "@/components/store-seeder";
+import { useBureauStore, DEMO_CUSTOMER_EMAIL, DEMO_PASSWORD } from "@/lib/store";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const logIn = useBureauStore((s) => s.logIn);
+  const logInDemo = useBureauStore((s) => s.logInDemo);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = logIn(email, password);
+    if (result.ok) {
+      router.push("/dashboard");
+    } else {
+      setError(result.error ?? "Login failed.");
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
+      <StoreSeeder />
+      <Link href="/" className="mb-8 flex items-center gap-2.5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+          <Landmark className="h-5 w-5" />
+        </div>
+        <span className="text-xl font-bold tracking-tight">
+          Bureau<span className="text-primary">OS</span>
+        </span>
+      </Link>
+
+      <Card className="w-full max-w-md">
+        <CardContent className="p-6 sm:p-8">
+          <h1 className="text-xl font-bold tracking-tight">Log in</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Pick up your cases where you left off.
+          </p>
+
+          <form onSubmit={submit} className="mt-6 space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </div>
+            {error && (
+              <p className="text-sm text-red-400" role="alert">{error}</p>
+            )}
+            <Button type="submit" className="w-full">
+              <LogIn className="h-4 w-4" />
+              Log in
+            </Button>
+          </form>
+
+          <div className="relative py-5">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+            <div className="relative flex justify-center"><span className="bg-card px-2 text-xs text-muted-foreground">or explore instantly</span></div>
+          </div>
+
+          <div className="grid gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                logInDemo("customer");
+                router.push("/dashboard");
+              }}
+            >
+              <UserRound className="h-4 w-4" />
+              Continue as demo customer
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                logInDemo("admin");
+                router.push("/admin");
+              }}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Explore the admin console
+            </Button>
+          </div>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            New here?{" "}
+            <Link href="/signup" className="font-medium text-primary hover:underline">
+              Create an account
+            </Link>
+          </p>
+        </CardContent>
+      </Card>
+
+      <p className="mt-6 max-w-md text-center text-xs text-muted-foreground">
+        Local demo auth: accounts and sessions live in this browser only. Demo customer:{" "}
+        <code className="text-foreground/80">{DEMO_CUSTOMER_EMAIL}</code> /{" "}
+        <code className="text-foreground/80">{DEMO_PASSWORD}</code>. Production BureauOS swaps this
+        module for Clerk, Supabase Auth, or Auth.js.
+      </p>
+    </div>
+  );
+}
