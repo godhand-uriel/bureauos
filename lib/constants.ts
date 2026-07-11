@@ -12,8 +12,6 @@ export const DEMO_CUSTOMER_EMAIL = "demo@bureauos.app";
 export const DEMO_ADMIN_EMAIL = "admin@bureauos.app";
 export const DEMO_PASSWORD = "bureau-demo";
 
-export const SESSION_COOKIE = "bureau_session";
-
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPreferences = {
   emailReminders: true,
   smsReminders: false,

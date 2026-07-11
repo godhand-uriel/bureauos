@@ -1,9 +1,42 @@
-# BureauOS Backend Migration — Phase 1 (completed) and beyond
+# BureauOS Backend Migration — Phases 1–2 (completed) and beyond
 
-Date: 2026-07-09
-Status: **Phase 1 implemented** — Prisma/SQLite is the source of truth behind
-validated API routes with server-side ownership checks. This document records
-what moved, how the architecture works, and what the next phases are.
+Date: 2026-07-09 (Phase 1) · 2026-07-11 (Phase 2)
+Status: **Phase 1 + Phase 2 implemented** — Prisma/SQLite is the source of
+truth behind validated API routes with server-side ownership checks (Phase 1),
+and authentication now runs on Auth.js with middleware-enforced sessions,
+CSRF hardening, and rate limiting (Phase 2). This document records what moved,
+how the architecture works, and what the next phases are.
+
+## Phase 2 — real authentication (completed 2026-07-11)
+
+Replaced the hand-rolled Session table + cookie with **Auth.js (NextAuth v5)**:
+
+- **Credentials provider** over the existing Prisma User table (scrypt hashes
+  in `lib/server/passwords.ts` remain as the credentials backend). Runs fully
+  locally — no external identity service needed. `auth.ts` / `auth.config.ts`
+  hold the config (edge-safe split so the middleware never imports Prisma).
+- **Stateless JWT sessions**: signed+encrypted httpOnly SameSite=Lax cookies
+  (`AUTH_SECRET`). The `Session` model was dropped
+  (migration `drop_custom_sessions`).
+- **Middleware enforcement** (`middleware.ts`): unauthenticated requests get
+  401 JSON on protected APIs and a `/login` redirect on protected pages;
+  `/admin` additionally requires the admin role from the token. Route handlers
+  still re-resolve the user from the database on every request
+  (`lib/server/auth.ts`), so role/ownership never rely on a stale token —
+  deleting a user revokes access immediately despite the stateless JWT.
+- **CSRF**: Auth.js's own endpoints carry CSRF tokens; all other mutating API
+  requests must pass a same-origin check in the middleware, on top of the
+  SameSite=Lax cookie.
+- **Rate limiting** (`lib/server/rate-limit.ts`): in-memory sliding window per
+  IP — 20/min on auth endpoints, 120/min on other mutations. Per-instance
+  only; swap for Upstash/Redis behind the same signature in production.
+- **Route changes**: `/api/auth/[...nextauth]` added (signin/signout/session/
+  csrf); `/api/auth/login` and `/api/auth/logout` deleted; `/api/auth/signup`
+  now only creates the account (client signs in through Auth.js after);
+  `/api/auth/demo` only ensures the demo seed exists.
+- Verified in the browser: login/logout/demo/signup flows, middleware
+  redirects and 401s, role-gated `/admin`, RBAC probes still 403, 429 after
+  the auth rate budget, 403 on cross-origin mutations, reset/reseed.
 
 ## Why
 
@@ -106,17 +139,18 @@ disclaimer acceptances, notification events.
 - Failed write-throughs warn on the console instead of rolling back or
   retrying; refresh restores server truth.
 - Rapid repeated intake saves are last-write-wins without a version check.
-- Auth is still demo-grade (scrypt + cookie sessions, no CSRF token, no rate
-  limiting). Authorization is real; authentication is not production-grade.
+- Rate limiting is per-process (in-memory); multi-instance deploys need a
+  shared store.
+- Demo accounts use a published shared password by design; remove them before
+  any external exposure.
 - No pagination — bootstrap returns full scoped datasets (fine locally).
 - `/api/dev/reset` wipes the whole database; it is blocked in production
   builds but is a demo tool, not an admin feature.
 
 ## Next phases
 
-1. **Phase 2 — real auth**: Clerk/Supabase Auth/Auth.js, middleware-enforced
-   sessions, CSRF, rate limiting on auth + mutation routes; delete
-   `lib/server/passwords.ts` and the `Session` model.
+1. ~~**Phase 2 — real auth**~~ **Done** — Auth.js credentials + JWT sessions,
+   middleware enforcement, CSRF origin checks, rate limiting (see above).
 2. **Phase 3 — Postgres + operations**: provider switch, audit-log table for
    staff actions, integration tests for ownership/RBAC (the API surface is now
    testable without a browser), background job for notification delivery.

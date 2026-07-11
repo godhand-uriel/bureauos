@@ -1,58 +1,27 @@
-import { randomBytes } from "crypto";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { User as DbUser, NotificationPreference } from "@prisma/client";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/server/db";
-import { SESSION_COOKIE } from "@/lib/constants";
 
 /**
- * Demo-grade session auth: random token in an httpOnly cookie, resolved
- * against the Session table. Authorization decisions in every API route go
- * through the user returned here — never through anything client-supplied.
+ * Session resolution for API routes — Phase 2: Auth.js (NextAuth v5).
  *
- * Production replaces this module with Clerk / Supabase Auth / Auth.js; the
- * requireUser/requireAdmin call sites stay the same shape.
+ * The middleware already verified the JWT; here we re-resolve the user from
+ * the database on every request so authorization decisions (role, ownership)
+ * always reflect current state, never a stale token. Deleting a user
+ * invalidates their access immediately even if their JWT hasn't expired.
  */
 
 export type SessionUser = DbUser & { notificationPrefs: NotificationPreference | null };
 
-export async function createSession(userId: string): Promise<string> {
-  const token = randomBytes(32).toString("hex");
-  await prisma.session.create({ data: { token, userId } });
-  return token;
-}
-
-export function setSessionCookie(res: NextResponse, token: string): void {
-  res.cookies.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
-  });
-}
-
-export function clearSessionCookie(res: NextResponse): void {
-  res.cookies.set(SESSION_COOKIE, "", { httpOnly: true, path: "/", maxAge: 0 });
-}
-
 export async function getSessionUser(): Promise<SessionUser | null> {
-  const store = await cookies();
-  const token = store.get(SESSION_COOKIE)?.value;
-  if (!token) return null;
-  const session = await prisma.session.findUnique({
-    where: { token },
-    include: { user: { include: { notificationPrefs: true } } },
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return null;
+  return prisma.user.findUnique({
+    where: { id: userId },
+    include: { notificationPrefs: true },
   });
-  return session?.user ?? null;
-}
-
-export async function destroySession(): Promise<void> {
-  const store = await cookies();
-  const token = store.get(SESSION_COOKIE)?.value;
-  if (token) {
-    await prisma.session.deleteMany({ where: { token } });
-  }
 }
 
 /* ------------------------- route guard helpers ------------------------- */

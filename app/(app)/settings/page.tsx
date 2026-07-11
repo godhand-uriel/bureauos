@@ -180,9 +180,9 @@ export default function SettingsPage() {
           <Separator />
           <p className="text-xs leading-relaxed text-muted-foreground">
             Data is served by validated API routes backed by Prisma (SQLite locally — see{" "}
-            <code>prisma/schema.prisma</code>), with server-side ownership checks on every write.
-            Production swaps SQLite for Postgres/Supabase and the demo sessions for real auth
-            (Clerk / Supabase Auth / Auth.js) without changing app components.
+            <code>prisma/schema.prisma</code>), with server-side ownership checks on every write
+            and Auth.js sessions enforced in middleware. Production swaps SQLite for
+            Postgres/Supabase without changing app components.
           </p>
         </CardContent>
       </Card>

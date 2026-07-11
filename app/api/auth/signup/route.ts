@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/server/db";
-import { createSession, setSessionCookie, badRequest } from "@/lib/server/auth";
+import { badRequest } from "@/lib/server/auth";
 import { hashPassword } from "@/lib/server/passwords";
-import { userToDomain } from "@/lib/server/serializers";
 import { queueNotification } from "@/lib/server/notify";
 import { signupInputSchema } from "@/lib/schemas";
 import { DEFAULT_NOTIFICATION_PREFS } from "@/lib/constants";
 
+/**
+ * Account creation. Does NOT establish a session — the client signs in
+ * through Auth.js (CSRF-protected credentials flow) immediately after.
+ * Rate-limited by the middleware (auth bucket).
+ */
 export async function POST(request: Request) {
   const parsed = signupInputSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return badRequest(parsed.error.flatten());
@@ -39,12 +43,8 @@ export async function POST(request: Request) {
         },
       },
     },
-    include: { notificationPrefs: true },
   });
   await queueNotification(user.id, "welcome", "Welcome to BureauOS", "Your account is set up. Start a case any time.");
 
-  const token = await createSession(user.id);
-  const res = NextResponse.json({ user: userToDomain(user) });
-  setSessionCookie(res, token);
-  return res;
+  return NextResponse.json({ ok: true });
 }

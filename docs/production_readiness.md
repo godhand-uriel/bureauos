@@ -1,6 +1,6 @@
 # BureauOS Production Readiness
 
-Date: 2026-07-09 (post Phase 1 backend migration)
+Date: 2026-07-11 (post Phase 2 auth migration)
 
 **BureauOS is NOT production-ready.** This document is the honest ledger of
 what is real, what is demo-grade, and what must happen before real customers
@@ -11,8 +11,10 @@ or real PII touch the system.
 | Layer | State | Production-ready? |
 |---|---|---|
 | Persistence | Prisma + SQLite behind API routes; server is source of truth | Partially — needs Postgres, backups, migrations discipline |
-| Authorization | Server-side owner scoping + role checks on every route; staff-only fields stripped from customer responses | Directionally yes — needs tests + audit logging |
-| Authentication | Demo-grade: scrypt password hash, random-token cookie sessions | **No** — replace with Clerk/Supabase Auth/Auth.js |
+| Authorization | Server-side owner scoping + role checks on every route; staff-only fields stripped from customer responses; middleware role gate on /admin | Directionally yes — needs tests + audit logging |
+| Authentication | Auth.js (NextAuth v5) credentials provider, scrypt hashes, signed/encrypted JWT sessions, middleware enforcement | Framework is production-grade; **demo accounts + shared password must go**, MFA missing |
+| CSRF | Auth.js token on auth endpoints; same-origin check + SameSite=Lax on all other mutations | Yes for current scope |
+| Rate limiting | Per-IP sliding window in middleware (auth 20/min, mutations 120/min) | Partially — in-memory per instance; needs shared store (Redis) for multi-node |
 | Input validation | Zod on every API boundary | Yes (extend as routes grow) |
 | Payments | Simulated (`/api/billing` records mock entries; UI labeled) | **No** — Stripe + verified webhooks |
 | File storage | Metadata only; bytes never leave the user's device; UI labeled | **No** — presigned encrypted object storage + scanning |
@@ -24,18 +26,21 @@ or real PII touch the system.
 
 ## Demo-only surfaces (must be removed/replaced before launch)
 
-- Demo accounts (`demo@bureauos.app`, `admin@bureauos.app`, shared password)
-  and the one-click demo login endpoint (`/api/auth/demo`).
+- Demo accounts (`demo@bureauos.app`, `admin@bureauos.app`, published shared
+  password) and the demo seed-ensure endpoint (`/api/auth/demo`).
 - `/api/dev/reset` (database wipe/reseed; refused in production builds unless
   `BUREAUOS_ALLOW_RESET=true`).
 - Seeded demo cases/tickets/reviews/files.
 - Simulated checkout copy and mock billing history.
 
-## Security checklist for production (unchanged priorities)
+## Security checklist for production
 
-- [ ] Real authentication provider; MFA for staff accounts
-- [ ] CSRF protection and strict same-site session policy
-- [ ] Rate limiting (auth, ticket creation, mutation routes, assistant)
+- [x] Real authentication framework (Auth.js credentials + JWT sessions) —
+      still needed: remove demo accounts, add MFA for staff
+- [x] CSRF protection (Auth.js tokens + same-origin checks) and SameSite=Lax
+      session policy
+- [x] Rate limiting on auth + mutation routes — still needed: shared store for
+      multi-instance deploys
 - [ ] Row-level ownership tests + RBAC integration tests in CI
 - [ ] Append-only audit log for staff actions (status changes, notes, file
       verification, review decisions)

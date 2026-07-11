@@ -1,9 +1,9 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 
 /**
- * Demo-grade password hashing (scrypt, per-user salt). Materially better than
- * the old client-side hash, but the whole module is still slated for deletion
- * when a real auth provider (Clerk / Supabase Auth / Auth.js) lands.
+ * Password hashing (scrypt, per-user salt, timing-safe compare) — backs the
+ * Auth.js credentials provider (auth.ts). If BureauOS later moves to a hosted
+ * identity provider (Clerk / Supabase Auth), this module goes away with it.
  */
 
 export function hashPassword(password: string): string {

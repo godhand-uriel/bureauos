@@ -35,7 +35,8 @@ Database scripts: `db:migrate` (apply committed migrations), `db:migrate:dev` (c
 migration after schema changes), `db:generate` (regenerate the Prisma client), `db:seed`
 (idempotent demo seed).
 
-**One env var is required**: `DATABASE_URL` (SQLite locally — see `.env.example`).
+**Two env vars are required** (see `.env.example`): `DATABASE_URL` (SQLite locally) and
+`AUTH_SECRET` (any random 64-hex string; generate with `openssl rand -hex 32`).
 
 > Tips for OneDrive-synced folders: OneDrive can occasionally lock files in `.next` (spurious
 > `PageNotFoundError` — delete `.next` and rebuild; don't run `next dev` and `next build`
@@ -90,7 +91,7 @@ You can also sign up a fresh customer account — data is per-browser (localStor
 |---|---|---|
 | Database | **Real** — Prisma + SQLite behind validated API routes; server is the source of truth | Switch provider to Postgres (Supabase/Neon/RDS); see `docs/backend_migration_plan.md` |
 | Authorization | **Real** — server-side owner scoping + role checks on every route; staff-only notes stripped from customer responses | Add RBAC integration tests + audit logging |
-| Auth | Demo-grade — scrypt-hashed passwords, httpOnly cookie sessions in the DB | Clerk / Supabase Auth / Auth.js replace `lib/server/auth.ts` + `passwords.ts` |
+| Auth | **Real framework** — Auth.js (NextAuth v5) credentials + JWT sessions, middleware-enforced, CSRF-protected, rate-limited | Remove demo accounts; optionally swap credentials for a hosted provider (Clerk/Supabase); add MFA |
 | Payments | Simulated checkout (`/api/billing` records mock entries), clearly labeled | Stripe Checkout + verified webhooks; tiers map 1:1 to Stripe prices |
 | File uploads | Metadata rows in the DB; bytes never leave the device, labeled in UI | Presigned uploads to S3 / Supabase Storage / R2 / GCS (`storageKey` reserved) |
 | Notifications | Server-side mock outbox honoring prefs (visible in `/settings/notifications`) | Resend/SendGrid/Postmark + Twilio/SNS/SES workers draining the same event rows |
@@ -138,8 +139,9 @@ the swap point.
 
 1. ~~**Database** — move persistence behind API routes with Prisma~~ **Done (Phase 1)** — SQLite
    locally; switch the provider to Postgres for hosting (`docs/backend_migration_plan.md`).
-2. **Auth** — replace demo sessions with Clerk/Supabase/Auth.js; enforce sessions in middleware;
-   keep the `customer`/`admin` role model.
+2. ~~**Auth** — replace demo sessions with Auth.js; enforce sessions in middleware~~ **Done
+   (Phase 2)** — remaining: remove demo accounts before external exposure; optional hosted
+   provider swap; MFA for staff.
 3. **Payments** — create Stripe products for the four tiers; replace `/checkout` with Stripe
    Checkout; handle `checkout.session.completed` + subscription webhooks (verify signatures).
 4. **Storage** — presigned upload endpoint; store object keys (schema already has `storageKey`).
@@ -166,8 +168,8 @@ the swap point.
 
 ## Known limitations
 
-- Authentication is demo-grade (local scrypt hashes + cookie sessions; no CSRF token, no rate
-  limiting) — authorization is server-enforced, authentication is not production-grade
+- Demo accounts use a published shared password by design; rate limiting is in-memory
+  (per-process) — both fine locally, both must change before external exposure
 - Data lives in a local SQLite file; earlier localStorage-era accounts/cases are not migrated
 - Failed background writes log a console warning; a page refresh restores server truth
 - File bytes stay on-device (metadata rows only)

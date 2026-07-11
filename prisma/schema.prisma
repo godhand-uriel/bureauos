@@ -10,8 +10,8 @@
 //     the API boundary (lib/schemas.ts).
 //   - Json columns → String columns holding serialized JSON (answers, plan
 //     actions/risk flags). Serializers in lib/server/serializers.ts parse.
-//   - Session model + User.passwordHash added for the demo-grade cookie
-//     session auth. Both are replaced wholesale by Clerk/Supabase/Auth.js.
+//   - User.passwordHash backs the Auth.js credentials provider (scrypt).
+//     Sessions are stateless Auth.js JWTs — no session table needed.
 //
 // Postgres migration: switch provider to "postgresql", reintroduce enums and
 // Json types, drop Session/passwordHash in favor of the auth provider.
@@ -37,7 +37,6 @@ model User {
   createdAt    DateTime @default(now())
 
   notificationPrefs NotificationPreference?
-  sessions          Session[]
   cases             Case[]
   subscriptions     Subscription[]
   tickets           SupportTicket[]
@@ -45,14 +44,6 @@ model User {
   files             UploadedFile[]
   acceptances       DisclaimerAcceptance[]
   notifications     NotificationEvent[]
-}
-
-// Demo-grade server session (httpOnly cookie holds the token).
-model Session {
-  token     String   @id
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  createdAt DateTime @default(now())
 }
 
 model NotificationPreference {

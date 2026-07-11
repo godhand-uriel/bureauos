@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { create } from "zustand";
+import { signIn as authSignIn, signOut as authSignOut } from "next-auth/react";
 import type {
   AnswerValue,
   Case,
@@ -274,6 +275,8 @@ export const useBureauStore = create<BureauState>()((set, get) => {
     },
 
     /* ---------------------------- Auth ---------------------------- */
+    // Sign-in/out go through Auth.js (CSRF-protected credentials flow, JWT
+    // session cookie). Account creation stays a plain validated route.
 
     signUp: async (name, email, password, usState) => {
       const res = await fetch("/api/auth/signup", {
@@ -286,30 +289,35 @@ export const useBureauStore = create<BureauState>()((set, get) => {
       if (!res.ok) {
         return { ok: false, error: data.error ?? "Sign up failed. Check your details and try again." };
       }
+      const signin = await authSignIn("credentials", { email, password, redirect: false });
+      if (signin?.error) {
+        return { ok: false, error: "Account created, but sign-in failed. Try logging in." };
+      }
       await loadBootstrap();
       return { ok: true };
     },
 
     logIn: async (email, password) => {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      }).catch(() => null);
+      const res = await authSignIn("credentials", { email, password, redirect: false }).catch(() => null);
       if (!res) return { ok: false, error: "Network error — is the server running?" };
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) return { ok: false, error: data.error ?? "Invalid email or password." };
+      if (res.error) return { ok: false, error: "Invalid email or password." };
       await loadBootstrap();
       return { ok: true };
     },
 
     logInDemo: async (role) => {
-      await apiFetch("/api/auth/demo", "POST", { role });
+      // Ensure demo data exists, then sign in with the (public) demo creds.
+      await apiFetch("/api/auth/demo", "POST", {});
+      await authSignIn("credentials", {
+        email: role === "admin" ? DEMO_ADMIN_EMAIL : DEMO_CUSTOMER_EMAIL,
+        password: DEMO_PASSWORD,
+        redirect: false,
+      });
       await loadBootstrap();
     },
 
     logOut: async () => {
-      await apiFetch("/api/auth/logout", "POST", {});
+      await authSignOut({ redirect: false });
       set({ ...EMPTY_DATA, hasHydrated: true });
     },
 
@@ -693,8 +701,14 @@ export const useBureauStore = create<BureauState>()((set, get) => {
     resetAllData: async (reseed) => {
       const data = await apiFetch<{ ok: boolean; reseeded: boolean }>("/api/dev/reset", "POST", { reseed });
       if (!data) return;
+      // The wipe deleted our account, so the old session is dead either way.
+      await authSignOut({ redirect: false });
       if (reseed) {
-        // The reset endpoint re-seeds and signs us in as the demo customer.
+        await authSignIn("credentials", {
+          email: DEMO_CUSTOMER_EMAIL,
+          password: DEMO_PASSWORD,
+          redirect: false,
+        });
         await loadBootstrap();
       } else {
         set({ ...EMPTY_DATA, hasHydrated: true });

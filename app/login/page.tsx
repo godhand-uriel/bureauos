@@ -119,10 +119,10 @@ export default function LoginPage() {
       </Card>
 
       <p className="mt-6 max-w-md text-center text-xs text-muted-foreground">
-        Demo-grade auth: accounts live in the local development database with cookie sessions.
-        Demo customer: <code className="text-foreground/80">{DEMO_CUSTOMER_EMAIL}</code> /{" "}
-        <code className="text-foreground/80">{DEMO_PASSWORD}</code>. Production BureauOS swaps this
-        module for Clerk, Supabase Auth, or Auth.js.
+        Auth.js sign-in against the local development database. Demo customer:{" "}
+        <code className="text-foreground/80">{DEMO_CUSTOMER_EMAIL}</code> /{" "}
+        <code className="text-foreground/80">{DEMO_PASSWORD}</code> — demo accounts exist for
+        local exploration only.
       </p>
     </div>
   );
