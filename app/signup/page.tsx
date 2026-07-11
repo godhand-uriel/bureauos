@@ -20,9 +20,9 @@ export default function SignupPage() {
   const [usState, setUsState] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = signUp(name, email, password, usState);
+    const result = await signUp(name, email, password, usState);
     if (result.ok) {
       router.push("/dashboard");
     } else {

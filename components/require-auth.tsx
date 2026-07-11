@@ -63,7 +63,8 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
           </CardContent>
         </Card>
         <p className="mt-4 text-xs text-muted-foreground">
-          Demo accounts come pre-loaded with realistic cases. All data stays in this browser.
+          Demo accounts come pre-loaded with realistic cases. All data stays in the local
+          development database.
         </p>
       </div>
     );

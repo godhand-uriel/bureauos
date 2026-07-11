@@ -23,7 +23,7 @@ export function DisclaimerGate({
   action: string;
   children: React.ReactNode;
 }) {
-  const accepted = useHasAccepted();
+  const accepted = useHasAccepted(caseId);
   const acceptDisclaimers = useBureauStore((s) => s.acceptDisclaimers);
   const [terms, setTerms] = useState(false);
   const [privacy, setPrivacy] = useState(false);

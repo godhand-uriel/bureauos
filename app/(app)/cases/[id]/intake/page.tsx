@@ -21,7 +21,7 @@ export default function IntakePage({ params }: { params: Promise<{ id: string }>
   const kase = useCase(id);
   const saveIntakeProgress = useBureauStore((s) => s.saveIntakeProgress);
   const completeIntake = useBureauStore((s) => s.completeIntake);
-  const hasAccepted = useHasAccepted();
+  const hasAccepted = useHasAccepted(id);
 
   // Local draft of answers; persisted on every navigation step.
   const [draft, setDraft] = useState<Record<string, AnswerValue> | null>(null);
@@ -76,9 +76,11 @@ export default function IntakePage({ params }: { params: Promise<{ id: string }>
     setError(null);
   };
 
-  const finish = () => {
-    saveIntakeProgress(kase.id, answers, currentStep);
-    completeIntake(kase.id);
+  const finish = async () => {
+    // Await the answer save, then server-side plan generation, then navigate —
+    // the plan page reads the engine output that the server produced.
+    await saveIntakeProgress(kase.id, answers, currentStep);
+    await completeIntake(kase.id);
     router.push(`/cases/${kase.id}/plan`);
   };
 

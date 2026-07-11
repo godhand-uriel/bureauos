@@ -19,9 +19,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = logIn(email, password);
+    const result = await logIn(email, password);
     if (result.ok) {
       router.push("/dashboard");
     } else {
@@ -89,8 +89,8 @@ export default function LoginPage() {
           <div className="grid gap-2">
             <Button
               variant="secondary"
-              onClick={() => {
-                logInDemo("customer");
+              onClick={async () => {
+                await logInDemo("customer");
                 router.push("/dashboard");
               }}
             >
@@ -99,8 +99,8 @@ export default function LoginPage() {
             </Button>
             <Button
               variant="ghost"
-              onClick={() => {
-                logInDemo("admin");
+              onClick={async () => {
+                await logInDemo("admin");
                 router.push("/admin");
               }}
             >
@@ -119,8 +119,8 @@ export default function LoginPage() {
       </Card>
 
       <p className="mt-6 max-w-md text-center text-xs text-muted-foreground">
-        Local demo auth: accounts and sessions live in this browser only. Demo customer:{" "}
-        <code className="text-foreground/80">{DEMO_CUSTOMER_EMAIL}</code> /{" "}
+        Demo-grade auth: accounts live in the local development database with cookie sessions.
+        Demo customer: <code className="text-foreground/80">{DEMO_CUSTOMER_EMAIL}</code> /{" "}
         <code className="text-foreground/80">{DEMO_PASSWORD}</code>. Production BureauOS swaps this
         module for Clerk, Supabase Auth, or Auth.js.
       </p>

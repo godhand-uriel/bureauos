@@ -31,8 +31,8 @@ function CheckoutForm() {
   const [cardName, setCardName] = useState("");
   const [done, setDone] = useState(false);
 
-  const complete = () => {
-    setSubscriptionTier(tierId);
+  const complete = async () => {
+    await setSubscriptionTier(tierId);
     if (kase) setCaseServiceTier(kase.id, tierId);
     setDone(true);
     setTimeout(() => router.push(kase ? `/cases/${kase.id}` : "/billing"), 1200);

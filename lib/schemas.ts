@@ -322,3 +322,147 @@ export const legacyPersistedStateSchema = z.object({
     .optional(),
   seeded: z.boolean().optional(),
 });
+
+/* ------------------------------------------------------------------ */
+/* API input schemas (validated at every route boundary)               */
+/* ------------------------------------------------------------------ */
+
+/** Client-generated ids are accepted for nested entities so optimistic UI
+ *  updates and server rows stay identical. */
+const clientId = z.string().min(8).max(64);
+
+export const navigatorSlugSchema = z.enum([
+  "dmv",
+  "job-separation",
+  "small-business",
+  "insurance-denial",
+  "veteran-benefits",
+  "tenant-rights",
+]);
+
+export const signupInputSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  email: z.string().trim().email().max(200),
+  password: z.string().min(8).max(200),
+  usState: z.string().trim().max(60).default(""),
+});
+
+export const loginInputSchema = z.object({
+  email: z.string().trim().email().max(200),
+  password: z.string().min(1).max(200),
+});
+
+export const demoLoginInputSchema = z.object({
+  role: z.enum(["customer", "admin"]),
+});
+
+export const profileUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  email: z.string().trim().email().max(200).optional(),
+  usState: z.string().trim().max(60).optional(),
+  phone: z.string().trim().max(40).optional(),
+});
+
+export const prefsUpdateSchema = notificationPreferencesSchema.partial();
+
+export const acceptanceInputSchema = z.object({
+  id: clientId.optional(),
+  caseId: z.string().max(64).nullable(),
+});
+
+export const billingInputSchema = z.object({
+  tier: serviceTierIdSchema,
+});
+
+export const createCaseInputSchema = z.object({
+  navigatorSlug: navigatorSlugSchema,
+  title: z.string().trim().max(200).optional(),
+});
+
+const bodyText = z.string().trim().min(1).max(10_000);
+
+export const caseActionSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("set_status"), status: caseStatusSchema }),
+  z.object({ type: z.literal("set_tier"), tier: serviceTierIdSchema }),
+  z.object({ type: z.literal("assign"), staffName: z.string().trim().max(120).nullable() }),
+  z.object({ type: z.literal("add_admin_note"), id: clientId.optional(), body: bodyText }),
+  z.object({
+    type: z.literal("save_intake"),
+    answers: z.record(z.string().max(80), answerValueSchema),
+    step: z.number().int().min(0).max(200),
+  }),
+  z.object({ type: z.literal("complete_intake") }),
+  z.object({ type: z.literal("regenerate_plan") }),
+  z.object({ type: z.literal("toggle_task"), taskId: clientId }),
+  z.object({ type: z.literal("add_task"), id: clientId, title: z.string().trim().min(1).max(300) }),
+  z.object({
+    type: z.literal("set_document_status"),
+    docId: clientId,
+    status: documentRequirementSchema.shape.status,
+  }),
+  z.object({ type: z.literal("toggle_deadline"), deadlineId: clientId }),
+  z.object({
+    type: z.literal("add_timeline_event"),
+    id: clientId,
+    eventType: timelineEventSchema.shape.type,
+    title: z.string().trim().min(1).max(300),
+    detail: z.string().trim().max(2_000).optional(),
+  }),
+  z.object({
+    type: z.literal("save_letter"),
+    id: clientId,
+    templateId: z.string().max(80),
+    title: z.string().trim().min(1).max(200),
+    letterBody: z.string().min(1).max(50_000),
+  }),
+  z.object({ type: z.literal("update_letter"), letterId: clientId, letterBody: z.string().min(1).max(50_000) }),
+  z.object({ type: z.literal("delete_letter"), letterId: clientId }),
+]);
+
+export type CaseActionInput = z.infer<typeof caseActionSchema>;
+
+export const createTicketInputSchema = z.object({
+  caseId: z.string().max(64).nullable(),
+  category: supportTicketSchema.shape.category,
+  subject: z.string().trim().min(1).max(300),
+  body: bodyText,
+});
+
+export const ticketActionSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("add_message"), id: clientId.optional(), body: bodyText }),
+  z.object({ type: z.literal("set_status"), status: supportTicketSchema.shape.status }),
+  z.object({ type: z.literal("add_internal_note"), id: clientId.optional(), body: bodyText }),
+]);
+
+export type TicketActionInput = z.infer<typeof ticketActionSchema>;
+
+export const createReviewInputSchema = z.object({
+  caseId: z.string().max(64),
+  customerNotes: bodyText,
+});
+
+export const reviewActionSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("set_status"), status: reviewRequestSchema.shape.status }),
+  z.object({ type: z.literal("add_note"), id: clientId.optional(), body: bodyText }),
+]);
+
+export type ReviewActionInput = z.infer<typeof reviewActionSchema>;
+
+export const createFileInputSchema = z.object({
+  id: clientId.optional(),
+  caseId: z.string().max(64),
+  name: z.string().trim().min(1).max(300),
+  fileType: z.string().max(150),
+  sizeLabel: z.string().max(40),
+  category: uploadedFileSchema.shape.category,
+  notes: z.string().max(1_000).default(""),
+});
+
+export const fileUpdateInputSchema = z.object({
+  status: uploadedFileSchema.shape.status,
+  notes: z.string().max(1_000).optional(),
+});
+
+export const devResetInputSchema = z.object({
+  reseed: z.boolean(),
+});

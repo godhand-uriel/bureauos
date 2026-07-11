@@ -24,16 +24,16 @@ function NewTicketForm() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim() || !body.trim()) return;
-    const ticket = createTicket({
+    const ticket = await createTicket({
       caseId: caseId || null,
       category,
       subject: subject.trim(),
       body: body.trim(),
     });
-    router.push(`/support/${ticket.id}`);
+    if (ticket) router.push(`/support/${ticket.id}`);
   };
 
   return (

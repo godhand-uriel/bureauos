@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import { useBureauStore, useHydrated } from "@/lib/store";
+import { useBureauStore } from "@/lib/store";
 
-/** Seeds demo cases once localStorage state has hydrated (demo mode only). */
+/** Loads the session-scoped data from the API once on mount. */
 export function StoreSeeder() {
-  const hydrated = useHydrated();
-  const ensureSeeded = useBureauStore((s) => s.ensureSeeded);
+  const bootstrap = useBureauStore((s) => s.bootstrap);
 
   useEffect(() => {
-    if (hydrated) ensureSeeded();
-  }, [hydrated, ensureSeeded]);
+    void bootstrap();
+  }, [bootstrap]);
 
   return null;
 }

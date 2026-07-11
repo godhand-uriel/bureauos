@@ -26,10 +26,10 @@ function NewCaseForm() {
 
   const selected = NAVIGATORS.find((n) => n.slug === slug);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!slug) return;
-    const kase = createCase(slug, title);
-    router.push(`/cases/${kase.id}/intake`);
+    const kase = await createCase(slug, title);
+    if (kase) router.push(`/cases/${kase.id}/intake`);
   };
 
   return (

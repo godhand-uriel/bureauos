@@ -15,23 +15,32 @@ generation, file organization, support tickets, and an operator console for the 
 ## Quick start
 
 ```bash
+cp .env.example .env    # Windows: Copy-Item .env.example .env
 npm install
-npm run dev      # http://localhost:3000
+npm run db:migrate      # apply Prisma migrations (SQLite at prisma/dev.db)
+npm run db:seed         # load the demo accounts + demo cases
+npm run dev             # http://localhost:3000
 ```
 
 Checks and production build:
 
 ```bash
+npm run typecheck
 npm run lint
 npm run build
 npm start
 ```
 
-**No environment variables are required.** The app runs fully offline in demo mode.
+Database scripts: `db:migrate` (apply committed migrations), `db:migrate:dev` (create a new
+migration after schema changes), `db:generate` (regenerate the Prisma client), `db:seed`
+(idempotent demo seed).
 
-> Tip: if the project lives in a OneDrive-synced folder, OneDrive can occasionally lock files in
-> `.next` and fail a build with a spurious `PageNotFoundError`. Delete `.next` and rebuild, don't
-> run `next dev` and `next build` at the same time, or move the project outside OneDrive.
+**One env var is required**: `DATABASE_URL` (SQLite locally — see `.env.example`).
+
+> Tips for OneDrive-synced folders: OneDrive can occasionally lock files in `.next` (spurious
+> `PageNotFoundError` — delete `.next` and rebuild; don't run `next dev` and `next build`
+> simultaneously). If SQLite locking misbehaves, point `DATABASE_URL` at a path outside the
+> synced folder.
 
 ### Demo accounts
 
@@ -79,49 +88,57 @@ You can also sign up a fresh customer account — data is per-browser (localStor
 
 | Layer | Local MVP (today) | Production path |
 |---|---|---|
-| Auth | Local demo auth (non-cryptographic hash, browser session) | Clerk / Supabase Auth / Auth.js — swap `signUp/logIn/logOut` + `useCurrentUser` |
-| Database | Zod-validated localStorage (zustand) | Prisma + Postgres (Supabase/Neon/RDS) — schema ready in `prisma/schema.prisma` |
-| Payments | Simulated checkout, mock billing history, clearly labeled | Stripe Checkout + verified webhooks; tiers map 1:1 to Stripe prices |
-| File uploads | Metadata only; bytes never leave the device, labeled in UI | Presigned uploads to S3 / Supabase Storage / R2 / GCS |
-| Notifications | Mock outbox (visible in `/settings/notifications`) honoring prefs | Resend/SendGrid/Postmark + Twilio/SNS/SES workers off the same event model |
+| Database | **Real** — Prisma + SQLite behind validated API routes; server is the source of truth | Switch provider to Postgres (Supabase/Neon/RDS); see `docs/backend_migration_plan.md` |
+| Authorization | **Real** — server-side owner scoping + role checks on every route; staff-only notes stripped from customer responses | Add RBAC integration tests + audit logging |
+| Auth | Demo-grade — scrypt-hashed passwords, httpOnly cookie sessions in the DB | Clerk / Supabase Auth / Auth.js replace `lib/server/auth.ts` + `passwords.ts` |
+| Payments | Simulated checkout (`/api/billing` records mock entries), clearly labeled | Stripe Checkout + verified webhooks; tiers map 1:1 to Stripe prices |
+| File uploads | Metadata rows in the DB; bytes never leave the device, labeled in UI | Presigned uploads to S3 / Supabase Storage / R2 / GCS (`storageKey` reserved) |
+| Notifications | Server-side mock outbox honoring prefs (visible in `/settings/notifications`) | Resend/SendGrid/Postmark + Twilio/SNS/SES workers draining the same event rows |
 | AI assistant | Deterministic rule-based provider (no keys needed) | Same `AssistantProvider` interface backed by Anthropic/OpenAI/OpenRouter |
-| Jurisdiction rules | Seeded samples (CA, TX, WA, FL, federal) with per-rule disclaimers | Maintained dataset in the `JurisdictionRule` table with editorial review |
+| Jurisdiction rules | Code-defined samples (CA, TX, WA, FL, federal) with per-rule disclaimers | Maintained dataset with editorial review |
 
-The UI never claims a mocked service is live.
+The UI never claims a mocked service is live. Full ledger: `docs/production_readiness.md`.
 
 ## Architecture
 
 ```
 app/
   page.tsx, pricing/, legal/*          Public pages (marketing shell)
-  login/, signup/                      Auth screens (local demo auth)
-  api/health/route.ts                  API layer seed + documented route map
+  login/, signup/                      Auth screens (demo-grade sessions)
+  api/                                 Zod-validated route handlers (source of truth)
+    auth/*, bootstrap/, cases/*, tickets/*, reviews/*, files/*,
+    billing/, acceptances/, me/*, dev/reset/, health/
   (app)/                               Authenticated app (sidebar shell + auth gate)
     dashboard/, assistant/, navigators/, cases/, support/, billing/,
     checkout/, settings/, settings/notifications/
-    admin/                             Staff-only console (role-gated)
+    admin/                             Staff-only console (role-gated, server-enforced)
 components/                            Product components + ui/ primitives
 lib/
-  types.ts, schemas.ts                 Domain model + Zod validation for all persisted data
-  store.ts                             Local-first data layer (user-scoped, v2) — swap point
-  plan-engine.ts                       Rule-based action plan engine
+  types.ts, schemas.ts                 Domain model + Zod validation (client + API inputs)
+  constants.ts                         Shared client/server constants
+  store.ts                             Client cache over the API (v3) — same selectors as ever
+  server/                              db, auth/sessions, serializers, case actions, notify, seed
+  plan-engine.ts                       Rule-based action plan engine (runs server-side)
   packages.ts                          Service tiers (Stripe-shaped)
   jurisdictions.ts                     Jurisdiction rules framework + samples
   assistant.ts                         AssistantProvider interface + rule-based provider
   navigators/                          Six navigator content modules
-  seed.ts                              Demo cases (built via the real plan engine)
-prisma/schema.prisma                   Production DB schema (migration target, not wired)
+  seed.ts                              Demo case content (used by the DB seed)
+prisma/
+  schema.prisma                        ACTIVE schema (SQLite; Postgres-ready)
+  migrations/, seed.ts                 Migrations + demo seed script
 ```
 
-**Swap-point discipline.** Components only talk to store actions and selectors. Persistence,
-auth, billing, storage, notifications, and the assistant are each behind a small interface with
-the production provider documented at the swap point.
+**Swap-point discipline.** Components only talk to store actions and selectors; the store talks
+only to the API; routes talk only to `lib/server/*`. Auth, billing, storage, notifications, and
+the assistant each remain behind a small interface with the production provider documented at
+the swap point.
 
 ## Production upgrade path
 
-1. **Database** — wire Prisma to `prisma/schema.prisma` (SQLite locally, Postgres hosted);
-   move store action bodies into API routes; validate inputs with `lib/schemas.ts`.
-2. **Auth** — replace demo auth with Clerk/Supabase/Auth.js; enforce sessions in middleware;
+1. ~~**Database** — move persistence behind API routes with Prisma~~ **Done (Phase 1)** — SQLite
+   locally; switch the provider to Postgres for hosting (`docs/backend_migration_plan.md`).
+2. **Auth** — replace demo sessions with Clerk/Supabase/Auth.js; enforce sessions in middleware;
    keep the `customer`/`admin` role model.
 3. **Payments** — create Stripe products for the four tiers; replace `/checkout` with Stripe
    Checkout; handle `checkout.session.completed` + subscription webhooks (verify signatures).
@@ -133,8 +150,8 @@ the production provider documented at the swap point.
 ## Security notes for production
 
 - **Authentication**: managed provider (Clerk/Supabase/Auth.js); never ship the demo hash. MFA for staff.
-- **Authorization / RBAC**: enforce owner-scoping and the customer/admin split server-side on every
-  API route (the client-side gates in this MVP are UX, not security).
+- **Authorization / RBAC**: owner-scoping and the customer/admin split are now enforced
+  server-side on every API route; add integration tests and audit logging on top.
 - **Data encryption**: TLS everywhere; encryption at rest for DB and file storage. Case data is
   sensitive PII (housing, health, employment, benefits).
 - **Secure file storage**: private buckets, presigned URLs with short TTLs, content-type validation,
@@ -149,8 +166,13 @@ the production provider documented at the swap point.
 
 ## Known limitations
 
-- All data is per-browser localStorage: no sync, no server enforcement, demo-grade auth
-- File bytes stay on-device (metadata only)
+- Authentication is demo-grade (local scrypt hashes + cookie sessions; no CSRF token, no rate
+  limiting) — authorization is server-enforced, authentication is not production-grade
+- Data lives in a local SQLite file; earlier localStorage-era accounts/cases are not migrated
+- Failed background writes log a console warning; a page refresh restores server truth
+- File bytes stay on-device (metadata rows only)
 - Checkout/billing/notifications are simulations, labeled as such in the UI
 - Jurisdiction rules are illustrative samples, not a maintained legal dataset
 - The assistant is keyword-routing, not a language model
+
+More detail: `docs/production_readiness.md` and `docs/backend_migration_plan.md`.

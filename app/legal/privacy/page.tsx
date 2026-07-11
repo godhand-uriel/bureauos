@@ -20,10 +20,11 @@ export default function PrivacyPage() {
         <div>
           <h2 className="text-base font-semibold text-foreground">1. Where your data lives (in this demo)</h2>
           <p className="mt-2">
-            In this local MVP, everything — your account, cases, intake answers, documents metadata,
-            letters, tickets — is stored in your browser&apos;s local storage on your device. Nothing is
-            transmitted to BureauOS servers, and attached files never leave your device (only their
-            name, type, size, and category are tracked).
+            In this local MVP, everything — your account, cases, intake answers, document metadata,
+            letters, tickets — is stored in a local database (SQLite) on the machine running the
+            app, behind access-controlled API routes. Nothing is transmitted to external services,
+            and attached files never leave your device (only their name, type, size, and category
+            are tracked).
           </p>
         </div>
         <div>

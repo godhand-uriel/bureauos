@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, BellRing, Inbox } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,14 @@ export default function NotificationSettingsPage() {
   const user = useCurrentUser();
   const updateNotificationPrefs = useBureauStore((s) => s.updateNotificationPrefs);
   const notifications = useBureauStore((s) => s.notifications);
+  const refresh = useBureauStore((s) => s.refresh);
+
+  // Pull the latest outbox from the server (staff actions create entries
+  // that this session's cache won't have seen yet).
+  useEffect(() => {
+    if (hydrated && user) void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
 
   if (!hydrated || !user) return null;
 

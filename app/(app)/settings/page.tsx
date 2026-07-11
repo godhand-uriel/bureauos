@@ -137,16 +137,16 @@ export default function SettingsPage() {
             Data & account
           </CardTitle>
           <CardDescription>
-            {caseCount} total case{caseCount === 1 ? "" : "s"} in this browser&apos;s local storage.
-            No data leaves your device in this MVP.
+            {caseCount} case{caseCount === 1 ? "" : "s"} visible to this account, stored in the
+            local development database (SQLite). Nothing is sent to external services in this MVP.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Button
               variant="outline"
-              onClick={() => {
-                logOut();
+              onClick={async () => {
+                await logOut();
                 router.push("/");
               }}
             >
@@ -155,9 +155,9 @@ export default function SettingsPage() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => {
-                if (window.confirm("Reset ALL local data (all accounts and cases) and reload the demo?")) {
-                  resetAllData(true);
+              onClick={async () => {
+                if (window.confirm("Reset ALL local demo data (all accounts and cases) and reload the demo?")) {
+                  await resetAllData(true);
                 }
               }}
             >
@@ -166,9 +166,9 @@ export default function SettingsPage() {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => {
-                if (window.confirm("Delete ALL local data (all accounts and cases)? This cannot be undone.")) {
-                  resetAllData(false);
+              onClick={async () => {
+                if (window.confirm("Delete ALL local demo data (all accounts and cases)? This cannot be undone.")) {
+                  await resetAllData(false);
                   router.push("/");
                 }
               }}
@@ -179,9 +179,10 @@ export default function SettingsPage() {
           </div>
           <Separator />
           <p className="text-xs leading-relaxed text-muted-foreground">
-            The data layer is a local-first abstraction (Zod-validated localStorage) whose entities
-            mirror <code>prisma/schema.prisma</code>. Production swaps it for Postgres/Supabase with
-            real auth (Clerk / Supabase Auth / Auth.js) without changing app components.
+            Data is served by validated API routes backed by Prisma (SQLite locally — see{" "}
+            <code>prisma/schema.prisma</code>), with server-side ownership checks on every write.
+            Production swaps SQLite for Postgres/Supabase and the demo sessions for real auth
+            (Clerk / Supabase Auth / Auth.js) without changing app components.
           </p>
         </CardContent>
       </Card>
