@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/server/db";
 import { badRequest, forbidden, getSessionUser, notFound, unauthorized } from "@/lib/server/auth";
 import { reviewInclude, reviewToDomain } from "@/lib/server/serializers";
+import { writeAudit } from "@/lib/server/audit";
 import { queueNotification } from "@/lib/server/notify";
 import { reviewActionSchema } from "@/lib/schemas";
 import type { NotificationEvent } from "@/lib/types";
@@ -36,6 +37,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
         "Your professional review status was updated.",
       )),
     );
+    await writeAudit(user, "review.set_status", "review", id, `${review.status} → ${action.status}`, review.caseId);
   } else {
     await prisma.$transaction([
       prisma.adminNote.create({
@@ -43,6 +45,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       }),
       prisma.reviewRequest.update({ where: { id }, data: { updatedAt: new Date() } }),
     ]);
+    await writeAudit(user, "review.add_note", "review", id, "Reviewer note added", review.caseId);
   }
 
   const updated = await prisma.reviewRequest.findUniqueOrThrow({ where: { id }, include: reviewInclude });

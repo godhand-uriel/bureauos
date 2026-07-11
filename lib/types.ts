@@ -385,6 +385,24 @@ export interface NotificationEvent {
 }
 
 /* ------------------------------------------------------------------ */
+/* Audit trail (staff actions; server-written, admin read-only)        */
+/* ------------------------------------------------------------------ */
+
+export interface AuditEntry {
+  id: string;
+  actorId: string;
+  actorName: string;
+  actorRole: UserRole;
+  /** e.g. "case.set_status", "review.add_note", "file.set_status" */
+  action: string;
+  targetType: "case" | "ticket" | "review" | "file" | "system";
+  targetId: string;
+  caseId: string | null;
+  detail: string;
+  createdAt: string;
+}
+
+/* ------------------------------------------------------------------ */
 /* Jurisdiction-specific rules framework (seeded samples in code)      */
 /* ------------------------------------------------------------------ */
 

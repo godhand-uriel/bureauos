@@ -1,6 +1,6 @@
 # BureauOS Production Readiness
 
-Date: 2026-07-11 (post Phase 2 auth migration)
+Date: 2026-07-11 (post Phase 3 operations hardening)
 
 **BureauOS is NOT production-ready.** This document is the honest ledger of
 what is real, what is demo-grade, and what must happen before real customers
@@ -11,14 +11,16 @@ or real PII touch the system.
 | Layer | State | Production-ready? |
 |---|---|---|
 | Persistence | Prisma + SQLite behind API routes; server is source of truth | Partially — needs Postgres, backups, migrations discipline |
-| Authorization | Server-side owner scoping + role checks on every route; staff-only fields stripped from customer responses; middleware role gate on /admin | Directionally yes — needs tests + audit logging |
+| Authorization | Server-side owner scoping + role checks on every route; staff-only fields stripped from customer responses; middleware role gate on /admin | Yes for current scope — locked in by the 23-test integration suite (`npm test`) |
+| Audit logging | Append-only `AuditLog` written server-side for all staff actions; admin read-only view; no app update/delete path | Yes for current scope — DB-level immutability guarantees come with Postgres roles |
+| Testing | RBAC/ownership/sanitization integration tests against a dedicated test DB; CI-ready (`npm test`) | Partially — add CI wiring + customer-flow e2e tests |
 | Authentication | Auth.js (NextAuth v5) credentials provider, scrypt hashes, signed/encrypted JWT sessions, middleware enforcement | Framework is production-grade; **demo accounts + shared password must go**, MFA missing |
 | CSRF | Auth.js token on auth endpoints; same-origin check + SameSite=Lax on all other mutations | Yes for current scope |
 | Rate limiting | Per-IP sliding window in middleware (auth 20/min, mutations 120/min) | Partially — in-memory per instance; needs shared store (Redis) for multi-node |
 | Input validation | Zod on every API boundary | Yes (extend as routes grow) |
 | Payments | Simulated (`/api/billing` records mock entries; UI labeled) | **No** — Stripe + verified webhooks |
 | File storage | Metadata only; bytes never leave the user's device; UI labeled | **No** — presigned encrypted object storage + scanning |
-| Notifications | Server-side mock outbox honoring preferences; nothing delivered | **No** — Resend/Twilio/SES worker |
+| Notifications | Queued→transport pipeline honoring preferences; MockTransport delivers inline, nothing sent | **No** — swap MockTransport for Resend/Twilio and move delivery to a worker |
 | Assistant | Local rule-based routing, no external calls | N/A for now |
 | Legal documents | Placeholders; versioned acceptance tracking is real and server-stored | **No** — counsel review required |
 | Secrets | Only `DATABASE_URL`; `.env` gitignored; no secrets in client code | Yes for current scope |
@@ -41,9 +43,11 @@ or real PII touch the system.
       session policy
 - [x] Rate limiting on auth + mutation routes — still needed: shared store for
       multi-instance deploys
-- [ ] Row-level ownership tests + RBAC integration tests in CI
-- [ ] Append-only audit log for staff actions (status changes, notes, file
-      verification, review decisions)
+- [x] Row-level ownership tests + RBAC integration tests (`npm test`, 23
+      tests) — still needed: run them in CI on every push
+- [x] Append-only audit log for staff actions (status changes, notes, file
+      verification, review decisions) — still needed: DB-role enforcement of
+      immutability once on Postgres
 - [ ] Postgres with encryption at rest, automated backups, tested restores
 - [ ] Secure file storage: private buckets, presigned short-TTL URLs,
       content-type validation, malware scanning

@@ -289,6 +289,25 @@ model DisclaimerAcceptance {
   @@index([userId, version])
 }
 
+// Append-only record of staff actions (status changes, assignments, notes,
+// review decisions, file verification, resets). Written server-side only;
+// exposed read-only to admin sessions. Never updated or deleted by the app.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actorName  String
+  actorRole  String // "customer" | "admin" — staff actions are the priority
+  action     String // e.g. "case.set_status", "review.set_status", "file.verify"
+  targetType String // "case" | "ticket" | "review" | "file" | "system"
+  targetId   String
+  caseId     String? // denormalized for per-case audit trails
+  detail     String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([caseId])
+}
+
 model NotificationEvent {
   id        String   @id @default(cuid())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

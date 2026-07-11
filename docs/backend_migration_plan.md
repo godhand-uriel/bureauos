@@ -1,11 +1,42 @@
-# BureauOS Backend Migration — Phases 1–2 (completed) and beyond
+# BureauOS Backend Migration — Phases 1–3 (completed) and beyond
 
-Date: 2026-07-09 (Phase 1) · 2026-07-11 (Phase 2)
-Status: **Phase 1 + Phase 2 implemented** — Prisma/SQLite is the source of
-truth behind validated API routes with server-side ownership checks (Phase 1),
-and authentication now runs on Auth.js with middleware-enforced sessions,
-CSRF hardening, and rate limiting (Phase 2). This document records what moved,
-how the architecture works, and what the next phases are.
+Date: 2026-07-09 (Phase 1) · 2026-07-11 (Phases 2–3)
+Status: **Phases 1–3 implemented** — Prisma/SQLite is the source of truth
+behind validated API routes with server-side ownership checks (Phase 1),
+authentication runs on Auth.js with middleware-enforced sessions, CSRF
+hardening, and rate limiting (Phase 2), and operations hardening is in place:
+an append-only audit trail for staff actions, an RBAC/ownership integration
+test suite, and a queued notification pipeline (Phase 3). This document
+records what moved, how the architecture works, and what the next phases are.
+
+## Phase 3 — operations hardening (completed 2026-07-11)
+
+- **Audit trail** (`AuditLog` model, `lib/server/audit.ts`): every staff
+  action — case status changes/assignments/internal notes, ticket replies/
+  status/internal notes, review decisions/notes, file verification, demo
+  resets — writes an append-only row (actor, action, target, detail,
+  timestamp) server-side, alongside the mutation. The app has no update or
+  delete path for it. Admin sessions see the latest entries in bootstrap and
+  a read-only "Recent staff activity" card on `/admin`; customer sessions
+  never receive audit data. Audit failures log but never block the mutation.
+- **Integration tests** (`npm test`, vitest, 23 tests in `tests/`): the
+  ownership/RBAC/sanitization guarantees are now executable. Two layers:
+  `performCaseAction` against a real test database (owner mutations, foreign
+  404s, admin-only 403s, per-case acceptance gating, server-side plan
+  generation, staff-actor notifications + audit writes), and the real route
+  handlers with only session resolution mocked (bootstrap scoping and
+  staff-field stripping, ticket caseId sanitization, review tier/acceptance/
+  ownership enforcement, file-verification RBAC, audit writes). Tests run on
+  a dedicated `prisma/test.db` migrated fresh per run (`tests/global-setup.ts`)
+  — no dev-server or browser needed, CI-ready.
+- **Notification pipeline** (`lib/server/notify.ts`): events are now written
+  as `queued` and handed to a `NotificationTransport`; the local
+  MockTransport marks them `mock_sent` inline. Production swaps the transport
+  for Resend/Twilio and moves delivery into a background worker draining the
+  queue — the seam is now explicit.
+- **Postgres switch**: deliberately NOT flipped — local dev stays
+  dependency-free on SQLite. The concrete switch procedure is documented
+  below ("Moving to Postgres").
 
 ## Phase 2 — real authentication (completed 2026-07-11)
 
@@ -113,9 +144,24 @@ SQLite today:
 | `Payment.amountCents` | `label`/`amountLabel`/`kind` | simulated billing entries |
 | `JurisdictionRule` model | removed for now | jurisdiction samples stay code-defined in `lib/jurisdictions.ts` |
 
-Moving to Postgres: switch the provider, reintroduce enums/Json (mechanical
-renames in `lib/server/serializers.ts`), create a fresh migration, and drop
-`Session`/`passwordHash` when the real auth provider replaces demo sessions.
+### Moving to Postgres (when hosting)
+
+The schema uses only portable column types (String/Boolean/Int/DateTime), so
+the switch is mechanical:
+
+1. Provision Postgres (Supabase/Neon/RDS) and set
+   `DATABASE_URL="postgresql://…"` in the deploy environment.
+2. In `prisma/schema.prisma`, change `provider = "sqlite"` to `"postgresql"`.
+3. Regenerate migrations for the new provider: delete `prisma/migrations/`
+   (SQLite dialect) and run `npx prisma migrate dev --name init_postgres`
+   against a dev Postgres instance; commit the result. (Prisma migrations are
+   provider-specific — they cannot be reused across providers.)
+4. Optionally reintroduce native `enum`s and `Json` columns — mechanical
+   renames confined to `prisma/schema.prisma` and
+   `lib/server/serializers.ts`; Zod validation at the API boundary is
+   unaffected either way.
+5. `npm run db:seed` for demo environments; run `npm test` (point
+   `DATABASE_URL` in `vitest.config.ts` at a scratch database).
 
 ## What moved to the database (Phase 1)
 
@@ -151,8 +197,10 @@ disclaimer acceptances, notification events.
 
 1. ~~**Phase 2 — real auth**~~ **Done** — Auth.js credentials + JWT sessions,
    middleware enforcement, CSRF origin checks, rate limiting (see above).
-2. **Phase 3 — Postgres + operations**: provider switch, audit-log table for
-   staff actions, integration tests for ownership/RBAC (the API surface is now
-   testable without a browser), background job for notification delivery.
+2. ~~**Phase 3 — operations**~~ **Done** — append-only audit trail, 23-test
+   RBAC/ownership integration suite (`npm test`), queued notification
+   pipeline. Postgres switch documented (see "Moving to Postgres") and
+   deferred to hosting so local dev stays dependency-free.
 3. **Phase 4 — Stripe + storage**: real checkout/webhooks replacing
-   `/api/billing`; presigned uploads replacing metadata-only files.
+   `/api/billing`; presigned uploads replacing metadata-only files; flip the
+   Postgres switch alongside the first real deploy.

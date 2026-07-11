@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/server/db";
 import { badRequest, getSessionUser, unauthorized } from "@/lib/server/auth";
+import { writeAudit } from "@/lib/server/audit";
 import { seedDatabase, wipeDatabase } from "@/lib/server/seed-db";
 import { devResetInputSchema } from "@/lib/schemas";
 
@@ -24,5 +25,7 @@ export async function POST(request: Request) {
   if (parsed.data.reseed) {
     await seedDatabase(prisma);
   }
+  // The wipe cleared the audit trail too — record who reset, post-wipe.
+  await writeAudit(user, "system.reset", "system", "database", parsed.data.reseed ? "Wiped and reseeded demo data" : "Wiped all data");
   return NextResponse.json({ ok: true, reseeded: parsed.data.reseed });
 }

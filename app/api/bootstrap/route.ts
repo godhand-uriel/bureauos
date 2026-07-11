@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/server/db";
 import { getSessionUser, unauthorized } from "@/lib/server/auth";
+import { auditToDomain } from "@/lib/server/audit";
 import {
   acceptanceToDomain,
   caseInclude,
@@ -31,7 +32,7 @@ export async function GET() {
 
   const ownerScope = isAdmin ? {} : { userId: user.id };
 
-  const [users, cases, tickets, reviews, files, subscriptions, acceptances, notifications] =
+  const [users, cases, tickets, reviews, files, subscriptions, acceptances, notifications, auditLog] =
     await Promise.all([
       isAdmin
         ? prisma.user.findMany({ include: { notificationPrefs: true } })
@@ -47,6 +48,10 @@ export async function GET() {
         orderBy: { createdAt: "desc" },
         take: 100,
       }),
+      // Audit trail is staff-only, read-only.
+      isAdmin
+        ? prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 50 })
+        : Promise.resolve([]),
     ]);
 
   return NextResponse.json({
@@ -59,5 +64,6 @@ export async function GET() {
     subscriptions: subscriptions.map(subscriptionToDomain),
     acceptances: acceptances.map(acceptanceToDomain),
     notifications: notifications.map(notificationToDomain),
+    auditLog: auditLog.map(auditToDomain),
   });
 }

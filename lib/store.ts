@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { signIn as authSignIn, signOut as authSignOut } from "next-auth/react";
 import type {
   AnswerValue,
+  AuditEntry,
   Case,
   CaseStatus,
   DisclaimerAcceptance,
@@ -101,6 +102,7 @@ interface BootstrapResponse {
   subscriptions: Subscription[];
   acceptances: DisclaimerAcceptance[];
   notifications: NotificationEvent[];
+  auditLog: AuditEntry[];
 }
 
 /* --------------------------------- store ------------------------------- */
@@ -115,6 +117,8 @@ interface BureauState {
   files: UploadedFile[];
   acceptances: DisclaimerAcceptance[];
   notifications: NotificationEvent[];
+  /** Staff-only audit trail (empty for customer sessions). */
+  auditLog: AuditEntry[];
   /** True once the initial bootstrap fetch has settled (signed in or not). */
   hasHydrated: boolean;
 
@@ -184,6 +188,7 @@ const EMPTY_DATA = {
   files: [] as UploadedFile[],
   acceptances: [] as DisclaimerAcceptance[],
   notifications: [] as NotificationEvent[],
+  auditLog: [] as AuditEntry[],
 };
 
 let bootstrapInFlight: Promise<void> | null = null;

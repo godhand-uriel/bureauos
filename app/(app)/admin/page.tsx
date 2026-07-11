@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarClock, ClipboardCheck, FileWarning, FolderOpen, LifeBuoy, Sparkles } from "lucide-react";
+import { CalendarClock, ClipboardCheck, FileWarning, FolderOpen, LifeBuoy, ScrollText, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
@@ -9,7 +9,7 @@ import { ReviewStatusBadge, TicketStatusBadge, TierBadge } from "@/components/pl
 import { getNavigator } from "@/lib/navigators";
 import { caseProgress } from "@/lib/plan-engine";
 import { useBureauStore, useHydrated } from "@/lib/store";
-import { daysUntil, formatDate, relativeDeadline } from "@/lib/utils";
+import { daysUntil, formatDate, formatDateTime, relativeDeadline } from "@/lib/utils";
 
 export default function AdminOverviewPage() {
   const hydrated = useHydrated();
@@ -18,6 +18,7 @@ export default function AdminOverviewPage() {
   const tickets = useBureauStore((s) => s.tickets);
   const reviews = useBureauStore((s) => s.reviews);
   const files = useBureauStore((s) => s.files);
+  const auditLog = useBureauStore((s) => s.auditLog);
 
   if (!hydrated) return <div className="h-64 animate-pulse rounded-lg bg-secondary" />;
 
@@ -206,6 +207,36 @@ export default function AdminOverviewPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Audit trail (server-written, read-only) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ScrollText className="h-4 w-4 text-primary" />
+            Recent staff activity
+            <span className="text-xs font-normal text-muted-foreground">audit log · read-only</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {auditLog.length === 0 ? (
+            <p className="py-2 text-sm text-muted-foreground">
+              Staff actions (status changes, notes, review decisions, file verification) are
+              recorded here automatically.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {auditLog.slice(0, 12).map((entry) => (
+                <li key={entry.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 py-2 text-sm">
+                  <span className="font-medium">{entry.actorName}</span>
+                  <Badge variant="secondary" className="text-[10px]">{entry.action}</Badge>
+                  <span className="min-w-0 flex-1 truncate text-muted-foreground">{entry.detail}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground/70">{formatDateTime(entry.createdAt)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

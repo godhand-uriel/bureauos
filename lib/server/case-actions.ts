@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/server/db";
 import type { SessionUser } from "@/lib/server/auth";
 import { caseInclude, caseToDomain, type DbCase } from "@/lib/server/serializers";
+import { writeAudit } from "@/lib/server/audit";
 import { queueNotification } from "@/lib/server/notify";
 import { generatePlanForCase } from "@/lib/plan-engine";
 import { DISCLAIMER_VERSION } from "@/lib/constants";
@@ -82,6 +83,7 @@ export async function performCaseAction(
             `Status changed to ${action.status.replace(/_/g, " ")} by the BureauOS team.`,
           )),
         );
+        await writeAudit(user, "case.set_status", "case", caseId, `${existing.status} → ${action.status}`, caseId);
       }
       break;
     }
@@ -91,6 +93,9 @@ export async function performCaseAction(
         where: { id: caseId },
         data: { serviceTier: action.tier, updatedAt: now },
       });
+      if (isAdmin && existing.userId !== user.id) {
+        await writeAudit(user, "case.set_tier", "case", caseId, `${existing.serviceTier} → ${action.tier}`, caseId);
+      }
       break;
 
     case "assign":
@@ -98,6 +103,7 @@ export async function performCaseAction(
         where: { id: caseId },
         data: { assignedTo: action.staffName, updatedAt: now },
       });
+      await writeAudit(user, "case.assign", "case", caseId, action.staffName ? `Assigned to ${action.staffName}` : "Unassigned", caseId);
       break;
 
     case "add_admin_note":
@@ -107,6 +113,7 @@ export async function performCaseAction(
         }),
         touch,
       ]);
+      await writeAudit(user, "case.add_internal_note", "case", caseId, "Internal note added", caseId);
       break;
 
     case "save_intake": {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/server/db";
 import { badRequest, forbidden, getSessionUser, notFound, unauthorized } from "@/lib/server/auth";
 import { fileToDomain } from "@/lib/server/serializers";
+import { writeAudit } from "@/lib/server/audit";
 import { queueNotification } from "@/lib/server/notify";
 import { fileUpdateInputSchema } from "@/lib/schemas";
 import type { NotificationEvent } from "@/lib/types";
@@ -23,6 +24,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     where: { id },
     data: { status: parsed.data.status, ...(parsed.data.notes !== undefined && { notes: parsed.data.notes }) },
   });
+  await writeAudit(user, "file.set_status", "file", id, `"${file.name}" ${file.status} → ${parsed.data.status}`, file.caseId);
 
   const notifications: NotificationEvent[] = [];
   if (parsed.data.status === "rejected") {

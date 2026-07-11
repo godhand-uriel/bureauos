@@ -26,6 +26,7 @@ Checks and production build:
 
 ```bash
 npm run typecheck
+npm test            # RBAC/ownership integration tests (dedicated test db)
 npm run lint
 npm run build
 npm start
@@ -90,7 +91,8 @@ You can also sign up a fresh customer account — data is per-browser (localStor
 | Layer | Local MVP (today) | Production path |
 |---|---|---|
 | Database | **Real** — Prisma + SQLite behind validated API routes; server is the source of truth | Switch provider to Postgres (Supabase/Neon/RDS); see `docs/backend_migration_plan.md` |
-| Authorization | **Real** — server-side owner scoping + role checks on every route; staff-only notes stripped from customer responses | Add RBAC integration tests + audit logging |
+| Authorization | **Real** — server-side owner scoping + role checks on every route; staff-only notes stripped from customer responses; locked in by a 23-test integration suite (`npm test`) | Run the suite in CI on every push |
+| Audit trail | **Real** — append-only `AuditLog` for staff actions, read-only admin view on `/admin` | DB-role immutability once on Postgres |
 | Auth | **Real framework** — Auth.js (NextAuth v5) credentials + JWT sessions, middleware-enforced, CSRF-protected, rate-limited | Remove demo accounts; optionally swap credentials for a hosted provider (Clerk/Supabase); add MFA |
 | Payments | Simulated checkout (`/api/billing` records mock entries), clearly labeled | Stripe Checkout + verified webhooks; tiers map 1:1 to Stripe prices |
 | File uploads | Metadata rows in the DB; bytes never leave the device, labeled in UI | Presigned uploads to S3 / Supabase Storage / R2 / GCS (`storageKey` reserved) |

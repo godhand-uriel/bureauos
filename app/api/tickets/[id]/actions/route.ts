@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/server/db";
 import { badRequest, forbidden, getSessionUser, notFound, unauthorized } from "@/lib/server/auth";
 import { ticketInclude, ticketToDomain } from "@/lib/server/serializers";
+import { writeAudit } from "@/lib/server/audit";
 import { queueNotification } from "@/lib/server/notify";
 import { ticketActionSchema } from "@/lib/schemas";
 import type { NotificationEvent } from "@/lib/types";
@@ -47,6 +48,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
             "BureauOS support replied to your ticket.",
           )),
         );
+        await writeAudit(user, "ticket.staff_reply", "ticket", id, `Replied on "${ticket.subject}"`, ticket.caseId);
       }
       break;
     }
@@ -65,6 +67,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
           "Your support ticket status was updated.",
         )),
       );
+      await writeAudit(user, "ticket.set_status", "ticket", id, `${ticket.status} → ${action.status}`, ticket.caseId);
       break;
     }
 
@@ -73,6 +76,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       await prisma.adminNote.create({
         data: { id: action.id, ticketId: id, authorName: user.name, body: action.body },
       });
+      await writeAudit(user, "ticket.add_internal_note", "ticket", id, `Internal note on "${ticket.subject}"`, ticket.caseId);
       break;
     }
   }
