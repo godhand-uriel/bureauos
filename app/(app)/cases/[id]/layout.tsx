@@ -49,6 +49,8 @@ export default function CaseLayout({
   const kase = useCase(id);
   const setCaseStatus = useBureauStore((s) => s.setCaseStatus);
   const deleteCase = useBureauStore((s) => s.deleteCase);
+  const humanReview = useBureauStore((s) => s.capabilities?.humanReview ?? false);
+  const hasReview = useBureauStore((s) => s.reviews.some((r) => r.caseId === id));
 
   if (!hydrated) {
     return (
@@ -64,7 +66,7 @@ export default function CaseLayout({
       <EmptyState
         icon={FileQuestion}
         title="Case not found"
-        description="This case doesn't exist on this device. It may have been deleted, or was created in a different browser."
+        description="This case doesn't exist or isn't part of your account. It may have been deleted."
         action={
           <Link href="/dashboard">
             <Button>Back to dashboard</Button>
@@ -140,7 +142,7 @@ export default function CaseLayout({
 
         {/* Tabs */}
         <nav className="-mb-px flex gap-1 overflow-x-auto border-b border-border" aria-label="Case sections">
-          {TABS.map((tab) => {
+          {TABS.filter((tab) => tab.segment !== "review" || humanReview || hasReview).map((tab) => {
             const href = tab.segment ? `/cases/${kase.id}/${tab.segment}` : `/cases/${kase.id}`;
             const active = pathname === href;
             return (

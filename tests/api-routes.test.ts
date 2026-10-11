@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 /**
  * Route-handler integration tests: the real route functions, the real
@@ -153,7 +153,26 @@ describe("ticket actions RBAC", () => {
 });
 
 describe("POST /api/reviews enforcement", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("is refused outright while human review is not offered — no request is created", async () => {
+    currentUser = stranger;
+    const kase = await prisma.case.create({
+      data: { userId: stranger.id, navigatorSlug: "dmv", title: "review off", serviceTier: "assisted_review" },
+    });
+    await prisma.disclaimerAcceptance.create({
+      data: {
+        userId: stranger.id, caseId: kase.id, version: DISCLAIMER_VERSION,
+        acceptedTerms: true, acceptedPrivacy: true, acceptedDisclaimer: true,
+      },
+    });
+    const res = await reviewsPOST(jsonRequest({ caseId: kase.id, customerNotes: "please review" }));
+    expect(res.status).toBe(409);
+    expect(await prisma.reviewRequest.count({ where: { caseId: kase.id } })).toBe(0);
+  });
+
   it("rejects reviews on self-service-tier cases (403)", async () => {
+    vi.stubEnv("BUREAUOS_HUMAN_REVIEW_ENABLED", "true");
     currentUser = stranger;
     const kase = await prisma.case.create({
       data: { userId: stranger.id, navigatorSlug: "dmv", title: "self-service case", serviceTier: "self_service" },
@@ -163,6 +182,7 @@ describe("POST /api/reviews enforcement", () => {
   });
 
   it("rejects reviews without per-case disclaimer acceptance (403)", async () => {
+    vi.stubEnv("BUREAUOS_HUMAN_REVIEW_ENABLED", "true");
     currentUser = stranger;
     const kase = await prisma.case.create({
       data: { userId: stranger.id, navigatorSlug: "dmv", title: "no acceptance", serviceTier: "assisted_review" },
@@ -172,6 +192,7 @@ describe("POST /api/reviews enforcement", () => {
   });
 
   it("rejects reviews of foreign cases (404)", async () => {
+    vi.stubEnv("BUREAUOS_HUMAN_REVIEW_ENABLED", "true");
     currentUser = stranger;
     const demoCase = await prisma.case.findFirstOrThrow({ where: { userId: customer.id } });
     const res = await reviewsPOST(jsonRequest({ caseId: demoCase.id, customerNotes: "not my case" }));
@@ -179,6 +200,7 @@ describe("POST /api/reviews enforcement", () => {
   });
 
   it("accepts an eligible, accepted, owned case", async () => {
+    vi.stubEnv("BUREAUOS_HUMAN_REVIEW_ENABLED", "true");
     currentUser = stranger;
     const kase = await prisma.case.create({
       data: { userId: stranger.id, navigatorSlug: "dmv", title: "eligible case", serviceTier: "assisted_review" },

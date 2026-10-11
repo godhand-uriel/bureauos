@@ -145,34 +145,6 @@ const veteranBenefits: NavigatorDef = {
         { id: "records_wanted", label: "Records requested", multiline: true, placeholder: "All treatment notes, imaging, and test results related to lower back condition" },
         { id: "return_address", label: "Where to send records", multiline: true },
       ],
-      render: (v, ctx) => `${ctx.todayLong}
-
-${v.provider_name || "[PROVIDER / FACILITY NAME]"}
-${v.provider_address || "[PROVIDER ADDRESS]"}
-
-Re: Request for Medical Records
-Patient: ${ctx.senderName}
-Date of Birth: ${v.patient_dob || "[DATE OF BIRTH]"}
-
-To Whom It May Concern:
-
-I am requesting copies of my medical records to support a claim for veterans' benefits with the Department of Veterans Affairs.
-
-Please provide records for the following treatment period: ${v.treatment_period || "[TREATMENT PERIOD]"}
-
-Records requested:
-${v.records_wanted || "[DESCRIBE THE RECORDS — TREATMENT NOTES, IMAGING, TEST RESULTS, DIAGNOSES]"}
-
-Please send the records to:
-${v.return_address || "[YOUR MAILING ADDRESS OR SECURE DELIVERY METHOD]"}
-
-If a signed authorization form is required, please send it to me and I will return it promptly. If any fee applies, please notify me of the amount before processing. Note that some states limit or waive fees for records supporting benefits claims.
-
-Thank you for your assistance.
-
-Sincerely,
-
-${ctx.senderName}`,
     },
   ],
   disclaimer:

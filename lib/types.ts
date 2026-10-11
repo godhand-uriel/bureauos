@@ -239,7 +239,7 @@ export interface User {
 }
 
 /* ------------------------------------------------------------------ */
-/* Service packages & billing                                          */
+/* Service tiers                                                       */
 /* ------------------------------------------------------------------ */
 
 export type ServiceTierId =
@@ -251,33 +251,67 @@ export type ServiceTierId =
 export interface ServiceTierDef {
   id: ServiceTierId;
   name: string;
-  priceLabel: string;
-  priceMonthly: number;
   tagline: string;
-  included: string[];
-  notIncluded: string[];
+  /** Requires BureauOS staff. Not purchasable; off unless operations enables it. */
   humanAssisted: boolean;
-  highlight?: boolean;
 }
 
-export type SubscriptionStatus = "active" | "canceled";
+/* ------------------------------------------------------------------ */
+/* Purchases & entitlements (real payments — Stripe)                   */
+/* ------------------------------------------------------------------ */
 
-export interface BillingHistoryEntry {
+export type PurchaseStatus =
+  | "pending" // checkout session created, not yet paid
+  | "paid"
+  | "failed"
+  | "expired" // checkout session expired unpaid
+  | "refunded"
+  | "disputed" // chargeback opened — entitlement suspended
+  | "dispute_lost";
+
+export interface Purchase {
   id: string;
-  label: string;
-  amountLabel: string;
-  date: string;
-  kind: "mock_charge" | "mock_refund" | "plan_change";
+  userId: string | null;
+  caseId: string | null;
+  product: string;
+  amountCents: number;
+  currency: string;
+  status: PurchaseStatus;
+  /** false = Stripe test mode or a development simulation; no real money moved. */
+  livemode: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface Subscription {
+export interface Entitlement {
   id: string;
   userId: string;
-  tier: ServiceTierId;
-  status: SubscriptionStatus;
-  startedAt: string;
-  updatedAt: string;
-  history: BillingHistoryEntry[];
+  caseId: string;
+  product: string;
+  status: "active" | "revoked";
+  source: "stripe" | "staff_grant" | "dev_simulation";
+  grantedAt: string;
+  revokedAt: string | null;
+  revokeReason: string | null;
+}
+
+/**
+ * What this deployment can actually do, computed on the server from its
+ * configuration. The UI renders from this instead of assuming a service is
+ * live — an unconfigured integration is shown as unavailable, never faked.
+ */
+export interface Capabilities {
+  /** "live": real charges. "test": Stripe test mode. "off": not configured. */
+  payments: "live" | "test" | "off";
+  casePass: { priceCents: number; currency: string; name: string };
+  /** Human-assisted packages and professional review are offered. */
+  humanReview: boolean;
+  /** "live": real provider. "mock": development outbox. "off": nothing is sent. */
+  emailDelivery: "live" | "mock" | "off";
+  sms: false;
+  uploads: false;
+  /** Development-only conveniences (demo login, simulated payment, data reset). */
+  devTools: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -512,14 +546,20 @@ export interface LetterField {
   fromAnswer?: string;
 }
 
+/**
+ * Letter template metadata — what the form needs. The letter text itself is
+ * NOT here: navigator content ships to the browser, so the bodies live in the
+ * server-only lib/server/letters.ts and are rendered after an entitlement check.
+ */
 export interface LetterTemplate {
   id: string;
   name: string;
   description: string;
   fields: LetterField[];
-  /** Render the letter body. Values keyed by field id; blanks become [BRACKETED PROMPTS]. */
-  render: (values: Record<string, string>, ctx: LetterContext) => string;
 }
+
+/** Renders a letter body. Values keyed by field id; blanks become [BRACKETED PROMPTS]. */
+export type LetterRenderer = (values: Record<string, string>, ctx: LetterContext) => string;
 
 export interface LetterContext {
   senderName: string;

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { StoreSeeder } from "@/components/store-seeder";
 import { useBureauStore } from "@/lib/store";
-import { safeNextPath } from "@/lib/server/request-guards";
+import { safeNextPath } from "@/lib/safe-next";
 import { US_STATES } from "@/lib/us-states";
 
 export default function SignupPage() {

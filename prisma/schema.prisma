@@ -47,6 +47,64 @@ model User {
   files             UploadedFile[]
   acceptances       DisclaimerAcceptance[]
   notifications     NotificationEvent[]
+  purchases         Purchase[]
+  entitlements      Entitlement[]
+}
+
+// A one-time purchase attempt, created server-side before redirecting to
+// Stripe Checkout. Status moves ONLY in response to verified Stripe webhook
+// events (lib/server/payments.ts) — never from a browser redirect.
+// Financial record: survives account/case deletion with the links nulled.
+model Purchase {
+  id                      String        @id @default(cuid())
+  user                    User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId                  String?
+  case                    Case?         @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  caseId                  String?
+  product                 String // product key, e.g. "case_pass" (lib/server/commerce.ts)
+  amountCents             Int
+  currency                String        @default("usd")
+  status                  String        @default("pending") // PurchaseStatus values
+  livemode                Boolean       @default(false)
+  stripeCheckoutSessionId String?       @unique
+  stripePaymentIntentId   String?       @unique
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  entitlements            Entitlement[]
+
+  @@index([userId])
+  @@index([caseId])
+}
+
+// What a customer is entitled to on one case. Rows are written only by the
+// payment fulfilment path or an audited staff grant — there is no customer-
+// callable API that creates or activates one.
+model Entitlement {
+  id           String    @id @default(cuid())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  case         Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId       String
+  product      String // "case_pass"
+  status       String    @default("active") // "active" | "revoked"
+  source       String // "stripe" | "staff_grant" | "dev_simulation"
+  purchase     Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  purchaseId   String?
+  grantedAt    DateTime  @default(now())
+  revokedAt    DateTime?
+  revokeReason String?
+
+  @@unique([caseId, product])
+  @@index([userId])
+}
+
+// Processed Stripe webhook events — the idempotency ledger. An event id is
+// inserted in the same transaction that applies its effects.
+model StripeEvent {
+  id          String   @id // Stripe event id (evt_…)
+  type        String
+  livemode    Boolean
+  processedAt DateTime @default(now())
 }
 
 model NotificationPreference {
@@ -88,6 +146,8 @@ model Case {
   adminNotes AdminNote[]
   reviews    ReviewRequest[]
   tickets    SupportTicket[]
+  purchases    Purchase[]
+  entitlements Entitlement[]
 
   @@index([userId])
 }

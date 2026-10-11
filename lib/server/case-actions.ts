@@ -3,6 +3,10 @@ import type { SessionUser } from "@/lib/server/auth";
 import { caseInclude, caseToDomain, deadlineToRow, type DbCase } from "@/lib/server/serializers";
 import { writeAudit } from "@/lib/server/audit";
 import { queueNotification } from "@/lib/server/notify";
+import { letterAccess } from "@/lib/server/letter-access";
+import { hasCasePass, staffGrantCasePass, staffRevokeCasePass } from "@/lib/server/payments";
+import { humanReviewEnabled } from "@/lib/server/commerce";
+import { isPaidNavigator } from "@/lib/launch";
 import { generatePlanForCase } from "@/lib/plan-engine";
 import { getNavigator } from "@/lib/navigators";
 import { DEADLINE_RULES } from "@/lib/deadline-rules";
@@ -33,7 +37,13 @@ export type CaseActionResult =
  * acquire entitlements exclusively through verified server-side payment state
  * (the Stripe webhook), never by asking this API to raise their own tier.
  */
-const ADMIN_ONLY = new Set(["assign", "add_admin_note", "set_tier"]);
+const ADMIN_ONLY = new Set([
+  "assign",
+  "add_admin_note",
+  "set_tier",
+  "grant_case_pass",
+  "revoke_case_pass",
+]);
 
 async function loadCase(id: string): Promise<DbCase | null> {
   return prisma.case.findUnique({ where: { id }, include: caseInclude });
@@ -99,7 +109,11 @@ export async function performCaseAction(
     }
 
     case "set_tier":
-      // Staff override only (ADMIN_ONLY above) — always audited.
+      // Staff override only (ADMIN_ONLY above) — always audited. The human-
+      // assisted tiers cannot be applied unless that service is switched on.
+      if (action.tier !== "self_service" && !humanReviewEnabled()) {
+        return { ok: false, status: 409, error: "Human-assisted packages are not currently offered." };
+      }
       await prisma.case.update({
         where: { id: caseId },
         data: { serviceTier: action.tier, updatedAt: now },
@@ -392,13 +406,42 @@ export async function performCaseAction(
       ]);
       break;
 
+    case "grant_case_pass": {
+      // Staff override (ADMIN_ONLY above): unlock without a payment — e.g. a
+      // goodwill grant or fixing a payment that needs manual reconciliation.
+      if (!isPaidNavigator(existing.navigatorSlug)) {
+        return { ok: false, status: 400, error: "No paid product is offered for this navigator." };
+      }
+      if (await hasCasePass(caseId)) {
+        return { ok: false, status: 409, error: "This case already has a Case Pass." };
+      }
+      await staffGrantCasePass(caseId, existing.userId);
+      await prisma.timelineEvent.create({
+        data: { caseId, type: "note", title: "Case Pass granted by BureauOS staff", date: now },
+      });
+      await writeAudit(user, "case.grant_case_pass", "case", caseId, `Staff grant: ${action.reason}`, caseId);
+      break;
+    }
+
+    case "revoke_case_pass": {
+      const revoked = await staffRevokeCasePass(caseId, `staff: ${action.reason}`);
+      if (revoked === 0) {
+        return { ok: false, status: 409, error: "This case has no active Case Pass." };
+      }
+      await prisma.timelineEvent.create({
+        data: { caseId, type: "note", title: "Case Pass removed by BureauOS staff", date: now },
+      });
+      await writeAudit(user, "case.revoke_case_pass", "case", caseId, `Staff revoke: ${action.reason}`, caseId);
+      break;
+    }
+
     case "save_letter": {
-      if (!isAdmin && !(await hasCaseAcceptance(existing.userId, caseId))) {
-        return {
-          ok: false,
-          status: 403,
-          error: "Terms, privacy, and disclaimer acceptance is required for this case first.",
-        };
+      // Same gate as the render endpoint: acceptance on record, and — in a
+      // paid navigator — an active Case Pass on this case.
+      const access = await letterAccess(user, existing);
+      if (!access.ok) return access;
+      if (!getNavigator(existing.navigatorSlug)?.letterTemplates.some((t) => t.id === action.templateId)) {
+        return { ok: false, status: 400, error: "Unknown letter template for this case." };
       }
       await prisma.$transaction([
         prisma.generatedLetter.create({

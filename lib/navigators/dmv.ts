@@ -140,34 +140,6 @@ const dmv: NavigatorDef = {
         { id: "issue_summary", label: "Brief description of the issue", multiline: true, fromAnswer: "situation_notes" },
         { id: "return_address", label: "Your mailing address", multiline: true },
       ],
-      render: (v, ctx) => `${ctx.todayLong}
-
-To: ${v.dmv_office || "[DMV OFFICE NAME AND ADDRESS]"}
-
-Re: Request for Driving Record and Account Status
-Driver License Number: ${v.license_number || "[LICENSE NUMBER]"}
-Date of Birth: ${v.dob || "[DATE OF BIRTH]"}
-
-To Whom It May Concern:
-
-I am writing to request a complete copy of my driving record, along with a written summary of any holds, suspensions, outstanding fees, or requirements currently associated with my license or vehicle registration.
-
-${v.issue_summary ? `For context: ${v.issue_summary}` : "[BRIEFLY DESCRIBE YOUR ISSUE]"}
-
-Specifically, I am requesting:
-1. My complete driving record.
-2. An itemized list of any outstanding fees or fines.
-3. The specific steps and documents required to resolve any hold or suspension on my record.
-4. Any deadlines that apply to my situation.
-
-Please send the requested records to the address below. If any fee is required to process this request, please let me know the amount and accepted payment methods.
-
-Thank you for your assistance.
-
-Sincerely,
-
-${ctx.senderName}
-${v.return_address || "[YOUR MAILING ADDRESS]"}`,
     },
   ],
   disclaimer:

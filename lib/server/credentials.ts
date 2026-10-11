@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/server/db";
 import { verifyPassword } from "@/lib/server/passwords";
 import { verifyTotp } from "@/lib/server/totp";
+import { isProduction } from "@/lib/server/commerce";
 import { DEMO_ADMIN_EMAIL, DEMO_CUSTOMER_EMAIL } from "@/lib/constants";
 import type { User } from "@prisma/client";
 
@@ -35,9 +36,7 @@ export type CredentialCheck =
         | "staff_mfa_enrollment_required";
     };
 
-export function isProduction(): boolean {
-  return process.env.NODE_ENV === "production";
-}
+export { isProduction };
 
 export function staffMfaRequired(): boolean {
   if (isProduction()) return process.env.BUREAUOS_REQUIRE_STAFF_MFA !== "false";

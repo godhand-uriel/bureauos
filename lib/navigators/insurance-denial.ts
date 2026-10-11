@@ -143,43 +143,6 @@ const insuranceDenial: NavigatorDef = {
         { id: "argument", label: "Why the denial is wrong", multiline: true, fromAnswer: "situation_notes", placeholder: "Reference policy language, medical necessity, correct facts…" },
         { id: "evidence_list", label: "Evidence enclosed (one per line)", multiline: true, placeholder: "Denial letter copy\nLetter from Dr. Smith\nMedical records 3/2–4/15" },
       ],
-      render: (v, ctx) => `${ctx.todayLong}
-
-${v.insurer_name || "[INSURER / APPEALS DEPARTMENT]"}
-${v.insurer_address || "[APPEALS MAILING ADDRESS]"}
-
-Re: FORMAL APPEAL of Claim Denial
-Policy Number: ${v.policy_number || "[POLICY NUMBER]"}
-Claim Number: ${v.claim_number || "[CLAIM NUMBER]"}
-Denial Letter Dated: ${v.denial_date || "[DENIAL DATE]"}
-
-To Whom It May Concern:
-
-I am writing to formally appeal the denial of the claim referenced above. Please treat this letter as a request for a full internal review of the decision.
-
-The denial letter states the claim was denied because:
-${v.denial_reason || "[QUOTE THE DENIAL REASON FROM THE LETTER]"}
-
-I believe this denial is incorrect for the following reasons:
-${v.argument || "[EXPLAIN WHY THE CLAIM SHOULD BE COVERED — REFERENCE POLICY LANGUAGE AND FACTS]"}
-
-In support of this appeal, I am enclosing:
-${v.evidence_list || "[LIST EACH ENCLOSED DOCUMENT]"}
-
-I request that you:
-1. Conduct a full review of this claim, including all enclosed documentation.
-2. Provide the specific policy provisions relied upon if the denial is upheld.
-3. Provide a copy of all documents, guidelines, and records used in your review.
-4. Respond in writing within the timeframe required by my policy and applicable law.
-
-Please confirm receipt of this appeal. I can be reached at the contact information below.
-
-Sincerely,
-
-${ctx.senderName}
-[YOUR ADDRESS / PHONE / EMAIL]
-
-Enclosures: as listed above`,
     },
   ],
   disclaimer:

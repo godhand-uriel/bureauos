@@ -33,15 +33,6 @@ export async function POST(request: Request) {
       role: "customer", // roles are never client-assignable
       usState,
       notificationPrefs: { create: { ...DEFAULT_NOTIFICATION_PREFS } },
-      subscriptions: {
-        create: {
-          tier: "self_service",
-          status: "active",
-          payments: {
-            create: { label: "Self-Service Navigator — free plan", amountLabel: "$0.00", kind: "plan_change" },
-          },
-        },
-      },
     },
   });
   await queueNotification(user.id, "welcome", "Welcome to BureauOS", "Your account is set up. Start a case any time.");

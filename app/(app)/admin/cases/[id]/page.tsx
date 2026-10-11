@@ -13,14 +13,15 @@ import { PriorityBadge, StatusBadge } from "@/components/status-badge";
 import { FileStatusBadge, ReviewStatusBadge, TierBadge } from "@/components/platform-badges";
 import { fileCategoryLabel } from "@/components/file-upload-panel";
 import { Timeline } from "@/components/timeline";
+import { CasePassAdminCard } from "@/components/case-pass-admin-card";
 import { getNavigator } from "@/lib/navigators";
+import { isPaidNavigator } from "@/lib/launch";
 import { caseProgress, sortDeadlines } from "@/lib/plan-engine";
 import { useBureauStore, useCurrentUser, useHydrated } from "@/lib/store";
 import { formatDateOnly, relativeDay } from "@/lib/dates";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import type { CaseStatus } from "@/lib/types";
 
-const STAFF = ["Alex Reyes", "Sam Whitfield", "Priya Nand"];
 
 export default function AdminCasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -44,13 +45,18 @@ export default function AdminCasePage({ params }: { params: Promise<{ id: string
       <EmptyState
         icon={FileQuestion}
         title="Case not found"
-        description="This case doesn't exist in local data."
+        description="This case doesn't exist. It may have been deleted."
         action={<Link href="/admin"><Button>Back to admin</Button></Link>}
       />
     );
   }
 
   const customer = users.find((u) => u.id === kase.userId);
+  // Assignable staff are the real admin accounts, plus whoever is already
+  // assigned (so an existing assignment is never silently dropped).
+  const staffNames = Array.from(
+    new Set([...users.filter((u) => u.role === "admin").map((u) => u.name), ...(kase.assignedTo ? [kase.assignedTo] : [])]),
+  );
   const nav = getNavigator(kase.navigatorSlug);
   const missingDocs = kase.documents.filter((d) => d.required && d.status !== "obtained" && d.status !== "not_applicable");
   const openTasks = kase.tasks.filter((t) => !t.done);
@@ -100,7 +106,7 @@ export default function AdminCasePage({ params }: { params: Promise<{ id: string
                 aria-label="Assign case"
               >
                 <option value="">Unassigned</option>
-                {STAFF.map((s) => (
+                {staffNames.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </Select>
@@ -126,6 +132,8 @@ export default function AdminCasePage({ params }: { params: Promise<{ id: string
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
+          {isPaidNavigator(kase.navigatorSlug) && <CasePassAdminCard caseId={kase.id} />}
+
           {/* Operational snapshot */}
           <Card>
             <CardHeader><CardTitle className="text-base">Case snapshot</CardTitle></CardHeader>

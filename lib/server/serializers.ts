@@ -11,6 +11,7 @@ import type {
   DeadlineTrigger,
   DisclaimerAcceptance,
   DocumentStatus,
+  Entitlement,
   FileCategory,
   FileStatus,
   NavigatorSlug,
@@ -18,10 +19,11 @@ import type {
   NotificationEventType,
   NotificationPreferences,
   Priority,
+  Purchase,
+  PurchaseStatus,
   ReviewRequest,
   ReviewStatus,
   ServiceTierId,
-  Subscription,
   SupportTicket,
   TicketCategory,
   TicketStatus,
@@ -69,12 +71,6 @@ export const reviewInclude = {
 } satisfies Prisma.ReviewRequestInclude;
 
 export type DbReview = Prisma.ReviewRequestGetPayload<{ include: typeof reviewInclude }>;
-
-export const subscriptionInclude = {
-  payments: { orderBy: { createdAt: "asc" as const } },
-} satisfies Prisma.SubscriptionInclude;
-
-export type DbSubscription = Prisma.SubscriptionGetPayload<{ include: typeof subscriptionInclude }>;
 
 export type DbUserWithPrefs = Prisma.UserGetPayload<{ include: { notificationPrefs: true } }>;
 
@@ -271,21 +267,33 @@ export function fileToDomain(f: Prisma.UploadedFileGetPayload<object>): Uploaded
   };
 }
 
-export function subscriptionToDomain(s: DbSubscription): Subscription {
+/** Stripe identifiers stay on the server — the client gets status and amounts only. */
+export function purchaseToDomain(p: Prisma.PurchaseGetPayload<object>): Purchase {
   return {
-    id: s.id,
-    userId: s.userId,
-    tier: s.tier as ServiceTierId,
-    status: s.status as Subscription["status"],
-    startedAt: iso(s.startedAt),
-    updatedAt: iso(s.updatedAt),
-    history: s.payments.map((p) => ({
-      id: p.id,
-      label: p.label,
-      amountLabel: p.amountLabel,
-      date: iso(p.createdAt),
-      kind: p.kind as Subscription["history"][number]["kind"],
-    })),
+    id: p.id,
+    userId: p.userId,
+    caseId: p.caseId,
+    product: p.product,
+    amountCents: p.amountCents,
+    currency: p.currency,
+    status: p.status as PurchaseStatus,
+    livemode: p.livemode,
+    createdAt: iso(p.createdAt),
+    updatedAt: iso(p.updatedAt),
+  };
+}
+
+export function entitlementToDomain(e: Prisma.EntitlementGetPayload<object>): Entitlement {
+  return {
+    id: e.id,
+    userId: e.userId,
+    caseId: e.caseId,
+    product: e.product,
+    status: e.status === "active" ? "active" : "revoked",
+    source: e.source as Entitlement["source"],
+    grantedAt: iso(e.grantedAt),
+    revokedAt: e.revokedAt ? iso(e.revokedAt) : null,
+    revokeReason: e.revokeReason,
   };
 }
 

@@ -73,9 +73,4 @@ export function isAllowedOrigin(headers: Headers, appUrl = process.env.BUREAUOS_
   return host !== null && parsed.host === host;
 }
 
-/** Only same-site relative paths are accepted as post-login destinations. */
-export function safeNextPath(next: string | null | undefined, fallback = "/dashboard"): string {
-  if (!next) return fallback;
-  if (!next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return fallback;
-  return next;
-}
+export { safeNextPath } from "@/lib/safe-next";

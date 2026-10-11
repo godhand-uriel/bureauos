@@ -133,27 +133,6 @@ const smallBusiness: NavigatorDef = {
         { id: "owner", label: "Who is responsible", placeholder: "e.g. Jordan (owner), CPA files it" },
         { id: "details", label: "Details / steps", multiline: true, placeholder: "Filing portal, fee amount, documents needed…" },
       ],
-      render: (v, ctx) => `INTERNAL COMPLIANCE MEMO
-
-Business: ${v.business_name || "[BUSINESS NAME]"}
-Date: ${ctx.todayLong}
-Prepared by: ${ctx.senderName}
-
-RE: ${v.obligation || "[OBLIGATION / FILING NAME]"}
-
-Due date: ${v.due_date || "[DUE DATE — VERIFY WITH THE STATE]"}
-Responsible: ${v.owner || "[RESPONSIBLE PERSON]"}
-
-Details and plan:
-${v.details || "[STEPS, PORTAL LINKS, FEES, AND DOCUMENTS NEEDED]"}
-
-Action items:
-1. Confirm the exact due date and fee with the filing authority.
-2. Gather required information before the filing window opens.
-3. File, pay, and save the confirmation to the compliance folder.
-4. Add next year's date to the compliance calendar.
-
-This memo documents our awareness of the obligation as of the date above.`,
     },
   ],
   disclaimer:

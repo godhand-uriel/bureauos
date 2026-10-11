@@ -1,34 +1,40 @@
 "use client";
 
 import { use, useState } from "react";
-import { Check, Copy, FilePen, Trash2 } from "lucide-react";
+import { BadgeCheck, Check, Copy, FilePen, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Callout } from "@/components/callout";
+import { CasePassOffer } from "@/components/case-pass-offer";
 import { DisclaimerGate } from "@/components/disclaimer-gate";
 import { LetterGenerator } from "@/components/letter-generator";
 import { getNavigator } from "@/lib/navigators";
-import { useBureauStore, useCase, useCurrentUser, useHydrated } from "@/lib/store";
+import { isPaidNavigator } from "@/lib/launch";
+import { useBureauStore, useCase, useCasePass, useHydrated, useIsAdmin } from "@/lib/store";
 import { cn, formatDateTime } from "@/lib/utils";
 
 export default function LettersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const hydrated = useHydrated();
   const kase = useCase(id);
-  const user = useCurrentUser();
-  const saveLetter = useBureauStore((s) => s.saveLetter);
+  const isAdmin = useIsAdmin();
+  const hasPass = useCasePass(id);
   const updateLetter = useBureauStore((s) => s.updateLetter);
   const deleteLetter = useBureauStore((s) => s.deleteLetter);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
 
   if (!hydrated || !kase) return null;
   const nav = getNavigator(kase.navigatorSlug);
   if (!nav) return null;
 
   const suggested = kase.plan?.suggestedLetterTemplateId;
+  const paid = isPaidNavigator(kase.navigatorSlug);
+  // Display only: the server makes the same decision on every render and save.
+  const locked = paid && !hasPass && !isAdmin;
 
   const copySaved = async (letterId: string, body: string) => {
     try {
@@ -42,31 +48,57 @@ export default function LettersPage({ params }: { params: Promise<{ id: string }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      {paid && hasPass && (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-400" />
+          Case Pass active — the letter generator is unlocked for this case.
+        </div>
+      )}
+
       {suggested && (
         <Callout variant="info" title="Suggested for this case">
-          Your action plan recommends the{" "}
+          Your action plan points to the{" "}
           <span className="font-semibold">
             {nav.letterTemplates.find((t) => t.id === suggested)?.name ?? "letter"}
-          </span>{" "}
-          below. Fields are prefilled from your intake answers where possible.
+          </span>
+          {locked ? "." : " below. Fields are prefilled from your intake answers where possible."}
         </Callout>
       )}
 
-      {/* Generators (gated behind one-time disclaimer acceptance) */}
-      <DisclaimerGate caseId={kase.id} action="generate letters">
-        {nav.letterTemplates.map((template) => (
-          <LetterGenerator
-            key={template.id}
-            template={template}
-            caseTitle={kase.title}
-            senderName={user?.name || "Your name"}
-            answers={kase.intake.answers}
-            onSave={(title, body) => saveLetter(kase.id, { templateId: template.id, title, body })}
-          />
-        ))}
-      </DisclaimerGate>
+      {locked ? (
+        <>
+          <CasePassOffer caseId={kase.id} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Letters in this navigator</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3">
+                {nav.letterTemplates.map((t) => (
+                  <li key={t.id}>
+                    <p className="text-sm font-medium">{t.name}</p>
+                    <p className="text-sm text-muted-foreground">{t.description}</p>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        /* Generators (gated behind the per-case disclaimer acceptance) */
+        <DisclaimerGate caseId={kase.id} action="generate letters">
+          {nav.letterTemplates.map((template) => (
+            <LetterGenerator
+              key={template.id}
+              caseId={kase.id}
+              template={template}
+              answers={kase.intake.answers}
+            />
+          ))}
+        </DisclaimerGate>
+      )}
 
-      {/* Saved letters */}
+      {/* Saved letters — always yours to read, edit, copy, and delete. */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -78,7 +110,7 @@ export default function LettersPage({ params }: { params: Promise<{ id: string }
         <CardContent className="space-y-3">
           {kase.letters.length === 0 ? (
             <p className="py-2 text-sm text-muted-foreground">
-              Letters you save appear here, linked to this case. Generate one above.
+              Letters you save appear here, linked to this case.
             </p>
           ) : (
             kase.letters.map((letter) => (
@@ -102,9 +134,18 @@ export default function LettersPage({ params }: { params: Promise<{ id: string }
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setEditingId(editingId === letter.id ? null : letter.id)}
+                      onClick={() => {
+                        if (editingId === letter.id) {
+                          // One write when editing ends, not one per keystroke.
+                          if (draft.trim() && draft !== letter.body) updateLetter(kase.id, letter.id, draft);
+                          setEditingId(null);
+                        } else {
+                          setDraft(letter.body);
+                          setEditingId(letter.id);
+                        }
+                      }}
                     >
-                      {editingId === letter.id ? "Done" : "Edit"}
+                      {editingId === letter.id ? "Save changes" : "Edit"}
                     </Button>
                     <Button
                       variant="ghost"
@@ -123,8 +164,8 @@ export default function LettersPage({ params }: { params: Promise<{ id: string }
                   <Textarea
                     className="mt-3 font-mono text-xs leading-relaxed"
                     rows={14}
-                    value={letter.body}
-                    onChange={(e) => updateLetter(kase.id, letter.id, e.target.value)}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
                     aria-label={`Edit ${letter.title}`}
                   />
                 ) : (
@@ -144,9 +185,9 @@ export default function LettersPage({ params }: { params: Promise<{ id: string }
       </Card>
 
       <Callout variant="warning" title="Before you send">
-        These letters are starting points, not legal documents. Fill every [BRACKETED] gap, verify
-        names, numbers, and dates, and keep a copy of everything you send — ideally with delivery
-        tracking.
+        These letters are starting points, not legal documents, and BureauOS does not send or file
+        anything for you. Fill every [BRACKETED] gap, verify names, numbers, and dates, and keep a
+        copy of everything you send — ideally with delivery tracking.
       </Callout>
     </div>
   );

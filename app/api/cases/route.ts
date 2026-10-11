@@ -14,10 +14,6 @@ export async function POST(request: Request) {
   const { navigatorSlug, title } = parsed.data;
   const nav = getNavigator(navigatorSlug);
 
-  // New cases inherit the owner's active service tier (server-derived).
-  const sub = await prisma.subscription.findUnique({ where: { userId: user.id } });
-  const serviceTier = sub?.status === "active" ? sub.tier : "self_service";
-
   const created = await prisma.case.create({
     data: {
       userId: user.id,
@@ -25,7 +21,9 @@ export async function POST(request: Request) {
       title: title || `${nav?.shortName ?? "New"} case`,
       status: "intake",
       priority: "medium",
-      serviceTier,
+      // Every case starts self-service. Paid access is a per-case entitlement
+      // granted by verified payment (lib/server/payments.ts), never inherited.
+      serviceTier: "self_service",
       timeline: {
         create: {
           type: "case_created",

@@ -24,7 +24,7 @@ const { auth } = NextAuth(authConfig);
 
 /** Authenticated by Stripe signature / cron bearer secret, never by session. */
 const MACHINE_API = ["/api/stripe/webhook", "/api/internal"];
-const PUBLIC_API = ["/api/health", "/api/auth", "/api/commerce/offer", ...MACHINE_API];
+const PUBLIC_API = ["/api/health", "/api/auth", ...MACHINE_API];
 const PROTECTED_PAGES = [
   "/dashboard",
   "/assistant",

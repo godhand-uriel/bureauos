@@ -1,80 +1,68 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  CheckCircle2,
+  CalendarClock,
   ClipboardList,
   FilePen,
-  Landmark,
   ListChecks,
-  Route,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { NavigatorIcon } from "@/components/navigator-icon";
+import { PublicShell } from "@/components/public-shell";
 import { NAVIGATORS } from "@/lib/navigators";
+
+const START_HREF = "/signup?next=%2Fcases%2Fnew%3Fnavigator%3Djob-separation";
 
 const HOW_IT_WORKS = [
   {
-    icon: Route,
-    title: "Pick your navigator",
-    text: "Six focused modules for the bureaucratic problems that derail real life — DMV, job loss, insurance denials, veteran benefits, tenant rights, and small business compliance.",
-  },
-  {
     icon: ClipboardList,
     title: "Answer a guided intake",
-    text: "Plain-language questions capture your situation. Progress saves as you go — stop and come back anytime.",
+    text: "Plain-language questions about how the job ended, your final pay, health coverage, and unemployment claim. Progress saves as you go.",
   },
   {
     icon: Sparkles,
-    title: "Get an action plan",
-    text: "A personalized plan: your next three moves, document checklist, deadlines to verify, and risk flags to watch.",
+    title: "Get your action plan",
+    text: "Your next steps, a document checklist, and risk flags — built from your answers by fixed rules, not guesswork.",
+  },
+  {
+    icon: CalendarClock,
+    title: "Track each deadline separately",
+    text: "Unemployment appeals, COBRA, and Marketplace enrollment each run from a different event. Each is tracked on its own, with the rule and its source shown.",
   },
   {
     icon: FilePen,
-    title: "Execute with confidence",
-    text: "Track tasks, organize documents, generate formal letters, and keep a dated timeline of everything that happens.",
+    title: "Write the letters",
+    text: "With the optional Case Pass: final paycheck follow-up, COBRA information request, and unemployment appeal statement, prefilled from your answers.",
   },
 ];
 
 const PILLARS = [
-  { icon: ListChecks, title: "Everything in one case file", text: "Tasks, documents, deadlines, letters, and communications — organized per case instead of scattered across notes and inboxes." },
-  { icon: CheckCircle2, title: "Built for follow-through", text: "Clear next actions and deadline tracking keep momentum through processes designed to outlast your patience." },
-  { icon: ShieldCheck, title: "Honest about what it is", text: "BureauOS organizes information and prepares next steps. It is not a law firm and does not provide legal advice — and it says so." },
+  {
+    icon: CalendarClock,
+    title: "No invented dates",
+    text: "A deadline is calculated only from a date you give us and a rule checked against its cited source. If either is missing, it says NEEDS VERIFICATION instead of guessing.",
+  },
+  {
+    icon: ListChecks,
+    title: "Everything in one case file",
+    text: "Tasks, documents, deadlines, letters, and a dated timeline — in one place instead of scattered across notes and inboxes.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Honest about what it is",
+    text: "BureauOS is self-service software. It is not a law firm, gives no legal advice, files nothing for you, and promises no outcome.",
+  },
 ];
 
 export default function LandingPage() {
-  return (
-    <div className="min-h-screen">
-      {/* Nav */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Landmark className="h-5 w-5" />
-            </div>
-            <span className="text-lg font-bold tracking-tight">
-              Bureau<span className="text-primary">OS</span>
-            </span>
-          </Link>
-          <nav className="flex items-center gap-2">
-            <Link href="/pricing" className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:block sm:px-3">
-              Pricing
-            </Link>
-            <Link href="/login" className="px-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:px-3">
-              Log in
-            </Link>
-            <Link href="/dashboard">
-              <Button size="sm">
-                Open the app
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </nav>
-        </div>
-      </header>
+  const preview = NAVIGATORS.filter((n) => n.launchStatus !== "live");
 
+  return (
+    <PublicShell>
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div
@@ -88,62 +76,35 @@ export default function LandingPage() {
         <div className="container flex flex-col items-center py-20 text-center lg:py-28">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs text-muted-foreground">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Free demo mode — no account required
+            Job Separation Navigator — deadline calculations available for Florida
           </div>
           <h1 className="max-w-3xl text-balance text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-            Bureaucracy is a system.
+            Lost your job?
             <br />
-            <span className="text-primary">Now you have one too.</span>
+            <span className="text-primary">Get organized before the deadlines pass.</span>
           </h1>
           <p className="mt-6 max-w-2xl text-balance text-lg leading-relaxed text-muted-foreground">
-            BureauOS turns overwhelming life-admin problems — a suspended license, a denied claim,
-            a lost job, an ignored repair request — into organized cases with clear next steps,
-            document checklists, and deadlines you won&apos;t miss.
+            Unemployment, final pay, and health coverage each run on their own clock. BureauOS turns
+            a job separation into one organized case: a plan, a document checklist, and deadlines
+            tracked from the right dates.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/navigators">
+            <Link href={START_HREF}>
               <Button size="lg">
-                Start a case
+                Start a Job Separation case — free
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link href="/dashboard">
+            <Link href="/pricing">
               <Button size="lg" variant="outline">
-                Explore the demo dashboard
+                See pricing
               </Button>
             </Link>
           </div>
-          <p className="mt-6 text-xs text-muted-foreground">
-            BureauOS helps you organize information and prepare next steps. It does not provide legal advice.
+          <p className="mt-6 max-w-xl text-xs leading-relaxed text-muted-foreground">
+            BureauOS helps you organize information and prepare next steps. It is not a law firm and
+            does not provide legal advice.
           </p>
-        </div>
-      </section>
-
-      {/* Navigators */}
-      <section className="container pb-20">
-        <div className="mb-8 text-center">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Six navigators. One command center.</h2>
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            Each navigator knows the terrain of one bureaucratic system and walks you through it.
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {NAVIGATORS.map((nav) => (
-            <Link key={nav.slug} href={`/navigators/${nav.slug}`} className="group">
-              <Card className="h-full transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-lg">
-                <CardContent className="flex h-full flex-col gap-3 p-5">
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: `hsl(${nav.accent} / 0.15)`, color: `hsl(${nav.accent})` }}
-                  >
-                    <NavigatorIcon icon={nav.icon} className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-semibold">{nav.name}</h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{nav.tagline}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
         </div>
       </section>
 
@@ -151,7 +112,7 @@ export default function LandingPage() {
       <section className="border-t border-border bg-card/30">
         <div className="container py-20">
           <div className="mb-10 text-center">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">From chaos to case file in minutes</h2>
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">How the Job Separation Navigator works</h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {HOW_IT_WORKS.map((step, i) => (
@@ -185,36 +146,52 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Preview navigators */}
+      <section className="border-t border-border">
+        <div className="container py-20">
+          <div className="mb-8 text-center">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Also in preview</h2>
+            <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
+              Five more navigators are available as free organizing tools. They don&apos;t have verified
+              deadline rules yet, so every deadline in them is yours to verify.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {preview.map((nav) => (
+              <Card key={nav.slug} className="h-full">
+                <CardContent className="flex h-full flex-col gap-3 p-5">
+                  <div className="flex items-center justify-between">
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-lg"
+                      style={{ backgroundColor: `hsl(${nav.accent} / 0.15)`, color: `hsl(${nav.accent})` }}
+                    >
+                      <NavigatorIcon icon={nav.icon} className="h-5 w-5" />
+                    </div>
+                    <Badge variant="secondary">Preview</Badge>
+                  </div>
+                  <h3 className="font-semibold">{nav.name}</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{nav.tagline}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="border-t border-border">
         <div className="container flex flex-col items-center py-20 text-center">
           <h2 className="max-w-xl text-balance text-2xl font-bold tracking-tight sm:text-3xl">
             The paperwork isn&apos;t going to organize itself.
           </h2>
-          <Link href="/navigators" className="mt-8">
+          <Link href={START_HREF} className="mt-8">
             <Button size="lg">
-              Start your first case
+              Start your case — free
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>
       </section>
-
-      <footer className="border-t border-border">
-        <div className="container flex flex-col items-center justify-between gap-4 py-8 text-sm text-muted-foreground sm:flex-row">
-          <p>© {new Date().getFullYear()} BureauOS. Demo MVP.</p>
-          <nav className="flex flex-wrap items-center justify-center gap-4 text-xs">
-            <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
-            <Link href="/legal/terms" className="hover:text-foreground">Terms</Link>
-            <Link href="/legal/privacy" className="hover:text-foreground">Privacy</Link>
-            <Link href="/legal/disclaimer" className="hover:text-foreground">Disclaimer</Link>
-          </nav>
-          <p className="max-w-sm text-center text-xs sm:text-right">
-            BureauOS organizes information, options, and next steps. It is not a substitute for
-            legal, tax, or financial advice.
-          </p>
-        </div>
-      </footer>
-    </div>
+    </PublicShell>
   );
 }

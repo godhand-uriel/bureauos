@@ -10,8 +10,9 @@ export default function NavigatorsPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Navigators</h1>
         <p className="mt-1 max-w-2xl text-muted-foreground">
-          Each navigator is a focused module for one bureaucratic system: guided intake, a
-          rule-based action plan, checklists, deadlines, and letters.
+          Each navigator is a focused module for one bureaucratic system. The Job Separation
+          Navigator is available now; the others are in preview as general organizing tools, without
+          verified deadline rules.
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

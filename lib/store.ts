@@ -6,19 +6,21 @@ import { signIn as authSignIn, signOut as authSignOut } from "next-auth/react";
 import type {
   AnswerValue,
   AuditEntry,
+  Capabilities,
   Case,
   CaseStatus,
   DisclaimerAcceptance,
   DocumentStatus,
+  Entitlement,
   FileCategory,
   GeneratedLetter,
   NavigatorSlug,
   NotificationEvent,
   NotificationPreferences,
+  Purchase,
   ReviewRequest,
   ReviewStatus,
   ServiceTierId,
-  Subscription,
   SupportTicket,
   TicketCategory,
   TicketStatus,
@@ -28,6 +30,8 @@ import type {
   UserRole,
 } from "@/lib/types";
 import { uid } from "@/lib/utils";
+import { CASE_PASS } from "@/lib/launch";
+import { todayLocal } from "@/lib/dates";
 import {
   DEMO_ADMIN_EMAIL,
   DEMO_CUSTOMER_EMAIL,
@@ -49,10 +53,10 @@ export { DEMO_ADMIN_EMAIL, DEMO_CUSTOMER_EMAIL, DEMO_PASSWORD, DISCLAIMER_VERSIO
  *     route; the server response (authoritative, authorization-checked)
  *     replaces the optimistic entity when it lands
  *
- * Nothing case/ticket/review/billing/acceptance-related is persisted in
- * localStorage anymore — the session lives in an httpOnly cookie and data
- * reloads from the API. Authorization is enforced server-side; the client
- * checks that remain are UX, not security.
+ * Nothing case/ticket/review/purchase/acceptance-related is persisted in
+ * localStorage — the session lives in an httpOnly cookie and data reloads
+ * from the API. Authorization AND entitlements are enforced server-side; the
+ * client checks that remain (including `useCasePass`) are UX, not security.
  */
 
 /* ------------------------------ API helpers ---------------------------- */
@@ -99,11 +103,15 @@ interface BootstrapResponse {
   tickets: SupportTicket[];
   reviews: ReviewRequest[];
   files: UploadedFile[];
-  subscriptions: Subscription[];
+  entitlements: Entitlement[];
+  purchases: Purchase[];
   acceptances: DisclaimerAcceptance[];
   notifications: NotificationEvent[];
   auditLog: AuditEntry[];
+  capabilities: Capabilities;
 }
+
+export type ActionOutcome = { ok: true } | { ok: false; error: string };
 
 /* --------------------------------- store ------------------------------- */
 
@@ -111,7 +119,9 @@ interface BureauState {
   users: User[];
   sessionUserId: string | null;
   cases: Case[];
-  subscriptions: Subscription[];
+  /** Per-case paid entitlements — display only; the server re-checks every paid action. */
+  entitlements: Entitlement[];
+  purchases: Purchase[];
   tickets: SupportTicket[];
   reviews: ReviewRequest[];
   files: UploadedFile[];
@@ -119,6 +129,8 @@ interface BureauState {
   notifications: NotificationEvent[];
   /** Staff-only audit trail (empty for customer sessions). */
   auditLog: AuditEntry[];
+  /** What this deployment can actually do (null until the first bootstrap). */
+  capabilities: Capabilities | null;
   /** True once the initial bootstrap fetch has settled (signed in or not). */
   hasHydrated: boolean;
 
@@ -136,9 +148,17 @@ interface BureauState {
   // Legal
   acceptDisclaimers: (caseId: string | null) => Promise<void>;
 
-  // Billing (simulated — Stripe later)
-  setSubscriptionTier: (tier: ServiceTierId) => Promise<void>;
-  cancelSubscription: () => void;
+  // Purchases (Stripe Checkout). Nothing here can grant access: the server
+  // creates the session, and only its verified webhook activates a Case Pass.
+  /** Ask the server for a Stripe Checkout URL for this case's Case Pass. */
+  startCheckout: (caseId: string) => Promise<{ ok: true; url: string } | { ok: false; error: string }>;
+  /** Read what the webhook has recorded for a returned checkout session. */
+  checkoutStatus: (sessionId: string) => Promise<{ status: string; caseId: string | null; entitled: boolean } | null>;
+  /** Development only (the route 404s in production). */
+  simulateDevPayment: (caseId: string) => Promise<ActionOutcome>;
+  /** Staff: grant / remove a Case Pass (audited server-side). */
+  grantCasePass: (caseId: string, reason: string) => Promise<ActionOutcome>;
+  revokeCasePass: (caseId: string, reason: string) => Promise<ActionOutcome>;
 
   // Cases
   createCase: (slug: NavigatorSlug, title?: string) => Promise<Case | null>;
@@ -159,7 +179,13 @@ interface BureauState {
   setDocumentStatus: (id: string, docId: string, status: DocumentStatus) => void;
   toggleDeadlineVerified: (id: string, deadlineId: string) => void;
   addTimelineEvent: (id: string, type: TimelineEventType, title: string, detail?: string) => void;
-  saveLetter: (id: string, letter: Omit<GeneratedLetter, "id" | "createdAt" | "updatedAt">) => void;
+  /** Render a letter on the server (entitlement-checked; the text never ships in the bundle). */
+  renderLetter: (
+    id: string,
+    templateId: string,
+    values: Record<string, string>,
+  ) => Promise<{ ok: true; body: string } | { ok: false; error: string; needsCasePass: boolean }>;
+  saveLetter: (id: string, letter: Omit<GeneratedLetter, "id" | "createdAt" | "updatedAt">) => Promise<ActionOutcome>;
   updateLetter: (id: string, letterId: string, body: string) => void;
   deleteLetter: (id: string, letterId: string) => void;
 
@@ -186,7 +212,8 @@ const EMPTY_DATA = {
   users: [] as User[],
   sessionUserId: null as string | null,
   cases: [] as Case[],
-  subscriptions: [] as Subscription[],
+  entitlements: [] as Entitlement[],
+  purchases: [] as Purchase[],
   tickets: [] as SupportTicket[],
   reviews: [] as ReviewRequest[],
   files: [] as UploadedFile[],
@@ -238,7 +265,7 @@ export const useBureauStore = create<BureauState>()((set, get) => {
   const caseActionResult = async (
     id: string,
     action: Record<string, unknown>,
-  ): Promise<{ ok: boolean; error?: string }> => {
+  ): Promise<ActionOutcome> => {
     const seq = nextSeq(`case:${id}`);
     try {
       const res = await fetch(`/api/cases/${id}/actions`, {
@@ -295,6 +322,7 @@ export const useBureauStore = create<BureauState>()((set, get) => {
 
   return {
     ...EMPTY_DATA,
+    capabilities: null,
     hasHydrated: false,
 
     bootstrap: async () => {
@@ -415,42 +443,60 @@ export const useBureauStore = create<BureauState>()((set, get) => {
       }
     },
 
-    /* --------------------------- Billing -------------------------- */
+    /* -------------------------- Purchases ------------------------- */
 
-    setSubscriptionTier: async (tier) => {
-      const data = await apiFetch<{ subscription: Subscription; notifications: NotificationEvent[] }>(
-        "/api/billing",
-        "POST",
-        { tier },
-      );
-      if (!data) return;
-      set({
-        subscriptions: [
-          data.subscription,
-          ...get().subscriptions.filter((s) => s.id !== data.subscription.id && s.userId !== data.subscription.userId),
-        ],
-      });
-      mergeNotifications(data.notifications);
+    startCheckout: async (caseId) => {
+      try {
+        const res = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ caseId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || typeof data.url !== "string") {
+          return { ok: false, error: typeof data.error === "string" ? data.error : "Could not start checkout." };
+        }
+        return { ok: true, url: data.url };
+      } catch {
+        return { ok: false, error: "Network error — check your connection and try again." };
+      }
     },
 
-    cancelSubscription: () => {
-      const user = me();
-      if (!user) return;
-      set({
-        subscriptions: get().subscriptions.map((s) =>
-          s.userId === user.id ? { ...s, tier: "self_service", status: "canceled" } : s,
-        ),
-      });
-      void (async () => {
-        const data = await apiFetch<{ subscription: Subscription }>("/api/billing", "DELETE");
-        if (data) {
-          set({
-            subscriptions: get().subscriptions.map((s) =>
-              s.id === data.subscription.id || s.userId === data.subscription.userId ? data.subscription : s,
-            ),
-          });
-        }
-      })();
+    checkoutStatus: async (sessionId) => {
+      const data = await apiFetch<{ status: string; caseId: string | null; entitled: boolean }>(
+        `/api/checkout/status?session_id=${encodeURIComponent(sessionId)}`,
+        "GET",
+      );
+      if (data?.entitled) await loadBootstrap();
+      return data;
+    },
+
+    simulateDevPayment: async (caseId) => {
+      try {
+        const res = await fetch("/api/dev/simulate-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ caseId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { ok: false, error: typeof data.error === "string" ? data.error : "Not available." };
+        await loadBootstrap();
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "Network error — check your connection and try again." };
+      }
+    },
+
+    grantCasePass: async (caseId, reason) => {
+      const result = await caseActionResult(caseId, { type: "grant_case_pass", reason });
+      if (result.ok) await loadBootstrap();
+      return result;
+    },
+
+    revokeCasePass: async (caseId, reason) => {
+      const result = await caseActionResult(caseId, { type: "revoke_case_pass", reason });
+      if (result.ok) await loadBootstrap();
+      return result;
     },
 
     /* ---------------------------- Cases --------------------------- */
@@ -468,6 +514,7 @@ export const useBureauStore = create<BureauState>()((set, get) => {
     deleteCase: (id) => {
       set({
         cases: get().cases.filter((c) => c.id !== id),
+        entitlements: get().entitlements.filter((e) => e.caseId !== id),
         files: get().files.filter((f) => f.caseId !== id),
         reviews: get().reviews.filter((r) => r.caseId !== id),
       });
@@ -573,20 +620,37 @@ export const useBureauStore = create<BureauState>()((set, get) => {
       void caseAction(id, { type: "add_timeline_event", id: eventId, eventType: type, title, detail });
     },
 
-    saveLetter: (id, letter) => {
-      const letterId = uid();
-      const now = new Date().toISOString();
-      mapCase(id, (c) =>
-        touch({ ...c, letters: [{ ...letter, id: letterId, createdAt: now, updatedAt: now }, ...c.letters] }),
-      );
-      void caseAction(id, {
+    renderLetter: async (id, templateId, values) => {
+      try {
+        const res = await fetch(`/api/cases/${id}/letters/render`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ templateId, values, localDate: todayLocal() }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || typeof data.body !== "string") {
+          return {
+            ok: false,
+            error: typeof data.error === "string" ? data.error : "Could not generate the letter. Try again.",
+            needsCasePass: res.status === 402,
+          };
+        }
+        return { ok: true, body: data.body };
+      } catch {
+        return { ok: false, error: "Network error — check your connection and try again.", needsCasePass: false };
+      }
+    },
+
+    // Not optimistic: saving is entitlement-checked on the server, so the
+    // letter appears in the case only once the server has accepted it.
+    saveLetter: (id, letter) =>
+      caseActionResult(id, {
         type: "save_letter",
-        id: letterId,
+        id: uid(),
         templateId: letter.templateId,
         title: letter.title,
         letterBody: letter.body,
-      });
-    },
+      }),
 
     updateLetter: (id, letterId, body) => {
       mapCase(id, (c) =>
@@ -802,8 +866,22 @@ export function useMyCases(): Case[] {
   return useMemo(() => cases.filter((c) => c.userId === sessionUserId), [cases, sessionUserId]);
 }
 
-export function useMySubscription(): Subscription | undefined {
-  return useBureauStore((s) => s.subscriptions.find((sub) => sub.userId === s.sessionUserId));
+/** Whether a case has an active Case Pass. Display only — the server decides. */
+export function useCasePass(caseId: string): boolean {
+  return useBureauStore((s) =>
+    s.entitlements.some((e) => e.caseId === caseId && e.product === CASE_PASS && e.status === "active"),
+  );
+}
+
+export function useCapabilities(): Capabilities | null {
+  return useBureauStore((s) => s.capabilities);
+}
+
+/** Purchases made by the signed-in user, newest first. */
+export function useMyPurchases(): Purchase[] {
+  const purchases = useBureauStore((s) => s.purchases);
+  const sessionUserId = useBureauStore((s) => s.sessionUserId);
+  return useMemo(() => purchases.filter((p) => p.userId === sessionUserId), [purchases, sessionUserId]);
 }
 
 /** Whether the current user has accepted the current disclaimer version

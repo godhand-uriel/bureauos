@@ -23,9 +23,9 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
             <Link href="/login" className="px-3 text-sm text-muted-foreground transition-colors hover:text-foreground">
               Log in
             </Link>
-            <Link href="/dashboard">
+            <Link href="/signup">
               <Button size="sm">
-                Open the app
+                Create account
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -37,13 +37,17 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
 
       <footer className="border-t border-border">
         <div className="container flex flex-col items-center justify-between gap-4 py-8 text-sm text-muted-foreground sm:flex-row">
-          <p>© {new Date().getFullYear()} BureauOS. Demo MVP.</p>
+          <p>© {new Date().getFullYear()} BureauOS</p>
           <nav className="flex flex-wrap items-center justify-center gap-4 text-xs">
             <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
             <Link href="/legal/terms" className="hover:text-foreground">Terms</Link>
             <Link href="/legal/privacy" className="hover:text-foreground">Privacy</Link>
             <Link href="/legal/disclaimer" className="hover:text-foreground">Disclaimer</Link>
           </nav>
+          <p className="max-w-sm text-center text-xs sm:text-right">
+            BureauOS is self-service software, not a law firm. It does not provide legal, tax, or
+            financial advice.
+          </p>
         </div>
       </footer>
     </div>

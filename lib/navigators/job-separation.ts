@@ -190,28 +190,6 @@ const jobSeparation: NavigatorDef = {
         { id: "amounts_owed", label: "What you believe you're owed", multiline: true, placeholder: "e.g. Final 2 weeks of wages, 32 hours unused PTO, $120 expense reimbursement" },
         { id: "return_address", label: "Your mailing address", multiline: true },
       ],
-      render: (v, ctx) => `${ctx.todayLong}
-
-To: ${v.employer_name || "[EMPLOYER / HR CONTACT]"}
-${v.employer_address || "[EMPLOYER ADDRESS]"}
-
-Re: Final Paycheck and Outstanding Compensation
-
-Dear ${v.employer_name || "[HR CONTACT]"},
-
-My employment ended on ${v.last_day || "[LAST DAY OF WORK]"}. I am writing to follow up on my final compensation, which I have not yet received in full.
-
-Based on my records, the following remains outstanding:
-${v.amounts_owed || "[LIST WAGES, UNUSED PTO, REIMBURSEMENTS, OR COMMISSIONS OWED]"}
-
-Please treat this letter as a written request for payment of all final wages owed. Confirm in writing when I can expect payment, or provide an itemized statement if you believe these amounts have already been paid. I would like to resolve this promptly and amicably.
-
-You can reach me at the address below. Thank you for your attention to this matter.
-
-Sincerely,
-
-${ctx.senderName}
-${v.return_address || "[YOUR MAILING ADDRESS]"}`,
     },
     {
       id: "cobra-notice-request",
@@ -224,30 +202,6 @@ ${v.return_address || "[YOUR MAILING ADDRESS]"}`,
         { id: "plan_name", label: "Health plan name (if known)", placeholder: "e.g. Acme Corp Group Health Plan" },
         { id: "return_address", label: "Your mailing address", multiline: true },
       ],
-      render: (v, ctx) => `${ctx.todayLong}
-
-To: ${v.recipient || "[EMPLOYER / PLAN ADMINISTRATOR]"}
-${v.recipient_address || "[ADDRESS]"}
-
-Re: Request for Health Coverage Information and Continuation Coverage Election Notice
-Plan: ${v.plan_name || "[HEALTH PLAN NAME, IF KNOWN]"}
-
-To Whom It May Concern:
-
-My employment ended on ${v.last_day || "[LAST DAY OF WORK]"}. I was enrolled in the employer's group health plan. I am writing to request, in writing:
-
-1. The date my coverage under the plan ends (or ended).
-2. My continuation coverage (COBRA or state continuation) election notice, including the election deadline, the premium amount, and where to send payment.
-3. The name and contact information of the plan administrator, if it is not you.
-
-If an election notice has already been sent, please tell me the date it was sent and the address it was sent to, and provide a copy.
-
-Please send your response to the address below. Thank you for your prompt attention.
-
-Sincerely,
-
-${ctx.senderName}
-${v.return_address || "[YOUR MAILING ADDRESS]"}`,
     },
     {
       id: "unemployment-appeal-statement",
@@ -261,29 +215,6 @@ ${v.return_address || "[YOUR MAILING ADDRESS]"}`,
         { id: "reasons", label: "Why you disagree", multiline: true, placeholder: "State the facts briefly and plainly. Attach supporting documents if your notice allows." },
         { id: "contact", label: "Your mailing address, phone, and email", multiline: true },
       ],
-      render: (v, ctx) => `${ctx.todayLong}
-
-To: ${v.agency || "[APPEALS OFFICE NAME AND ADDRESS — COPY FROM YOUR NOTICE]"}
-
-Re: Appeal of Determination
-Claimant: ${ctx.senderName}
-Claimant ID: ${v.claimant_id || "[CLAIMANT ID FROM YOUR NOTICE]"}
-Determination mailed: ${v.determination_date || "[MAILING DATE ON THE DETERMINATION]"}
-Issue / determination number: ${v.issue_number || "[NUMBER FROM YOUR NOTICE]"}
-
-To Whom It May Concern:
-
-I am appealing the determination identified above. I disagree with the determination and request an appeal hearing.
-
-I disagree with the determination for the following reasons:
-${v.reasons || "[STATE BRIEFLY AND FACTUALLY WHY THE DETERMINATION IS WRONG]"}
-
-Please send all notices about this appeal to me at:
-${v.contact || "[YOUR MAILING ADDRESS, PHONE, AND EMAIL]"}
-
-Sincerely,
-
-${ctx.senderName}`,
     },
   ],
   disclaimer:

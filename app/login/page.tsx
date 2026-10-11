@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StoreSeeder } from "@/components/store-seeder";
 import { useBureauStore, DEMO_CUSTOMER_EMAIL, DEMO_PASSWORD } from "@/lib/store";
-import { safeNextPath } from "@/lib/server/request-guards";
+import { safeNextPath } from "@/lib/safe-next";
 
 /** Demo sign-in surfaces are compiled out of production builds entirely;
  *  the server additionally refuses demo-account credentials in production. */

@@ -142,31 +142,6 @@ const tenantRights: NavigatorDef = {
         { id: "first_reported", label: "When you first reported it (if before)", placeholder: "e.g. By text on March 12, 2026" },
         { id: "access_times", label: "When repair workers can access the unit", placeholder: "e.g. Weekdays after 4pm, or anytime with 24h notice" },
       ],
-      render: (v, ctx) => `${ctx.todayLong}
-
-To: ${v.landlord_name || "[LANDLORD / PROPERTY MANAGER]"}
-${v.landlord_address || "[LANDLORD MAILING ADDRESS]"}
-
-Re: Formal Repair Request — ${v.unit_address || "[RENTAL ADDRESS / UNIT]"}
-
-Dear ${v.landlord_name || "[LANDLORD NAME]"},
-
-I am writing to formally request repairs at the rental unit listed above. The following issue(s) need attention:
-
-${v.issue_description || "[DESCRIBE EACH PROBLEM — LOCATION, WHAT'S WRONG, AND HOW IT AFFECTS THE UNIT]"}
-
-${v.first_reported ? `I previously reported this: ${v.first_reported}. This letter confirms that request in writing.` : "This letter serves as my formal written notice of these conditions."}
-
-Please arrange for repairs within a reasonable time. Repair workers may access the unit: ${v.access_times || "[ACCESS AVAILABILITY]"} — with proper advance notice as required by the lease and state law.
-
-Please confirm in writing when the repairs will be scheduled. I have documented the current conditions with dated photographs and will continue to keep records.
-
-I value the tenancy and would like to resolve this cooperatively.
-
-Sincerely,
-
-${ctx.senderName}
-${v.unit_address || "[YOUR ADDRESS]"}`,
     },
   ],
   disclaimer:

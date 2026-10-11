@@ -28,7 +28,7 @@ export default function TicketPage({ params }: { params: Promise<{ id: string }>
       <EmptyState
         icon={FileQuestion}
         title="Ticket not found"
-        description="This ticket doesn't exist on this device, or it belongs to a different account."
+        description="This ticket doesn't exist, or it belongs to a different account."
         action={
           <Link href="/support">
             <Button>Back to support</Button>

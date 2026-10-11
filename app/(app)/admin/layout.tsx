@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { RequireAdmin } from "@/components/require-auth";
+import { useBureauStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 const ADMIN_TABS = [
@@ -13,17 +14,21 @@ const ADMIN_TABS = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  // The review queue is only part of the console when that staffed service
+  // is on — or while requests from an earlier period still exist.
+  const showReviews = useBureauStore((s) => (s.capabilities?.humanReview ?? false) || s.reviews.length > 0);
+  const tabs = ADMIN_TABS.filter((tab) => tab.href !== "/admin/reviews" || showReviews);
   return (
     <RequireAdmin>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Admin console</h1>
           <p className="mt-1 text-muted-foreground">
-            Operator view: customer cases, reviews, tickets, and deadlines.
+            Operator view: customer cases, support tickets, deadlines, and Case Passes.
           </p>
         </div>
         <nav className="-mb-px flex gap-1 overflow-x-auto border-b border-border" aria-label="Admin sections">
-          {ADMIN_TABS.map((tab) => {
+          {tabs.map((tab) => {
             const active =
               tab.href === "/admin"
                 ? pathname === "/admin" || pathname.startsWith("/admin/cases")

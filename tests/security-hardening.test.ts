@@ -33,7 +33,8 @@ import { rateLimit, resetRateLimitMemory } from "@/lib/server/rate-limit";
 import { DEMO_ADMIN_EMAIL, DEMO_CUSTOMER_EMAIL, DEMO_PASSWORD } from "@/lib/constants";
 import { POST as demoPOST } from "@/app/api/auth/demo/route";
 import { POST as resetPOST } from "@/app/api/dev/reset/route";
-import { POST as billingPOST, DELETE as billingDELETE } from "@/app/api/billing/route";
+import { existsSync } from "fs";
+import path from "path";
 import { POST as caseActionPOST } from "@/app/api/cases/[id]/actions/route";
 import { POST as signupPOST } from "@/app/api/auth/signup/route";
 import { PATCH as mePATCH } from "@/app/api/me/route";
@@ -96,7 +97,16 @@ describe("paid-tier escalation is closed", () => {
     expect(after.serviceTier).toBe(before.serviceTier);
   });
 
-  it("allows a staff override and always writes an audit record", async () => {
+  it("staff cannot apply a human-assisted tier while that service is switched off", async () => {
+    const before = await prisma.case.findUniqueOrThrow({ where: { id: ownCaseId } });
+    const result = await performCaseAction(admin, ownCaseId, { type: "set_tier", tier: "priority" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(409);
+    expect((await prisma.case.findUniqueOrThrow({ where: { id: ownCaseId } })).serviceTier).toBe(before.serviceTier);
+  });
+
+  it("allows a staff override when the service is on, and always writes an audit record", async () => {
+    vi.stubEnv("BUREAUOS_HUMAN_REVIEW_ENABLED", "true");
     const auditBefore = await prisma.auditLog.count({ where: { action: "case.set_tier", targetId: ownCaseId } });
     const original = (await prisma.case.findUniqueOrThrow({ where: { id: ownCaseId } })).serviceTier;
     const result = await performCaseAction(admin, ownCaseId, { type: "set_tier", tier: "priority" });
@@ -105,14 +115,11 @@ describe("paid-tier escalation is closed", () => {
     await performCaseAction(admin, ownCaseId, { type: "set_tier", tier: original as "self_service" });
   });
 
-  it("refuses the simulated billing route in production (no self-granted plan)", async () => {
-    currentUser = customer;
-    vi.stubEnv("NODE_ENV", "production");
-    const sub = await prisma.subscription.findUnique({ where: { userId: customer.id } });
-    expect((await billingPOST(json({ tier: "priority" }))).status).toBe(503);
-    expect((await billingDELETE()).status).toBe(503);
-    const after = await prisma.subscription.findUnique({ where: { userId: customer.id } });
-    expect(after?.tier).toBe(sub?.tier);
+  it("the simulated billing endpoint no longer exists", () => {
+    // Plan changes used to be a customer-callable simulation. The only paths
+    // to paid access now are the verified Stripe webhook and audited staff
+    // grants (tests/payments.test.ts).
+    expect(existsSync(path.join(process.cwd(), "app", "api", "billing"))).toBe(false);
   });
 
   it("blocks regenerate_plan on a case whose intake was never completed", async () => {

@@ -10,14 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Callout } from "@/components/callout";
-import { TierBadge } from "@/components/platform-badges";
-import { useBureauStore, useCurrentUser, useHydrated, useMySubscription } from "@/lib/store";
+import { useBureauStore, useCurrentUser, useHydrated } from "@/lib/store";
 
 export default function SettingsPage() {
   const router = useRouter();
   const hydrated = useHydrated();
   const user = useCurrentUser();
-  const subscription = useMySubscription();
+
   const updateProfile = useBureauStore((s) => s.updateProfile);
   const resetAllData = useBureauStore((s) => s.resetAllData);
   const logOut = useBureauStore((s) => s.logOut);
@@ -49,10 +48,7 @@ export default function SettingsPage() {
             Profile
           </CardTitle>
           <CardDescription>
-            Signed in as {user.email}
-            {subscription && (
-              <span className="ml-2 inline-flex align-middle"><TierBadge tier={subscription.tier} /></span>
-            )}{" "}
+            Signed in as {user.email}{" "}
             {savedFlash && <span className="text-emerald-400">Saved.</span>}
           </CardDescription>
         </CardHeader>
