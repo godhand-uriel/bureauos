@@ -24,7 +24,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     where: { id },
     data: { status: parsed.data.status, ...(parsed.data.notes !== undefined && { notes: parsed.data.notes }) },
   });
-  await writeAudit(user, "file.set_status", "file", id, `"${file.name}" ${file.status} → ${parsed.data.status}`, file.caseId);
+  await writeAudit(user, "file.set_status", "file", id, `${file.status} → ${parsed.data.status}`, file.caseId);
 
   const notifications: NotificationEvent[] = [];
   if (parsed.data.status === "rejected") {

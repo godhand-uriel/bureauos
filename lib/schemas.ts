@@ -343,13 +343,24 @@ export const navigatorSlugSchema = z.enum([
 export const signupInputSchema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().trim().email().max(200),
-  password: z.string().min(8).max(200),
+  password: z.string().min(10).max(200),
   usState: z.string().trim().max(60).default(""),
 });
 
 export const loginInputSchema = z.object({
   email: z.string().trim().email().max(200),
   password: z.string().min(1).max(200),
+  /** TOTP code — required when the account has MFA enrolled. */
+  totp: z
+    .string()
+    .trim()
+    .max(12)
+    .optional()
+    .transform((v) => (v === "" ? undefined : v)),
+});
+
+export const mfaVerifyInputSchema = z.object({
+  code: z.string().trim().min(6).max(12),
 });
 
 export const demoLoginInputSchema = z.object({

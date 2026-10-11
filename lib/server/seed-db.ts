@@ -22,6 +22,11 @@ import { daysFromNow, uid } from "@/lib/utils";
  * Idempotent: skips if the demo customer already exists (unless wiped first).
  */
 export async function seedDatabase(prisma: PrismaClient): Promise<{ seeded: boolean }> {
+  // Defense in depth: every caller already refuses in production, but the
+  // demo accounts carry a published password, so the seed itself refuses too.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Demo data must never be seeded in production.");
+  }
   const existing = await prisma.user.findUnique({ where: { email: DEMO_CUSTOMER_EMAIL } });
   if (existing) return { seeded: false };
 

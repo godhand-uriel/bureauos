@@ -48,7 +48,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
             "BureauOS support replied to your ticket.",
           )),
         );
-        await writeAudit(user, "ticket.staff_reply", "ticket", id, `Replied on "${ticket.subject}"`, ticket.caseId);
+        await writeAudit(user, "ticket.staff_reply", "ticket", id, "Staff reply sent", ticket.caseId);
       }
       break;
     }
@@ -76,7 +76,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       await prisma.adminNote.create({
         data: { id: action.id, ticketId: id, authorName: user.name, body: action.body },
       });
-      await writeAudit(user, "ticket.add_internal_note", "ticket", id, `Internal note on "${ticket.subject}"`, ticket.caseId);
+      await writeAudit(user, "ticket.add_internal_note", "ticket", id, "Internal note added", ticket.caseId);
       break;
     }
   }

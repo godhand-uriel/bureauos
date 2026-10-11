@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useBureauStore, useCurrentUser, useHydrated } from "@/lib/store";
 
+/** Demo sign-in surfaces are compiled out of production builds entirely. */
+const DEMO_UI = process.env.NODE_ENV !== "production";
+
 /**
- * Client-side auth gate for the app area. With the local demo auth this is a
- * UX boundary; in production the same boundary moves server-side (middleware
- * + session checks) with Clerk/Supabase/Auth.js.
+ * Client-side auth gate for the app area — a UX boundary on top of the real
+ * enforcement (middleware session checks + per-route authorization).
  */
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const hydrated = useHydrated();
@@ -48,24 +50,30 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
                 Create an account
               </Button>
             </Link>
-            <div className="relative py-1">
-              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-              <div className="relative flex justify-center"><span className="bg-card px-2 text-xs text-muted-foreground">or explore instantly</span></div>
-            </div>
-            <Button variant="secondary" onClick={() => logInDemo("customer")}>
-              <UserRound className="h-4 w-4" />
-              Continue as demo customer
-            </Button>
-            <Button variant="ghost" onClick={() => logInDemo("admin")}>
-              <ShieldCheck className="h-4 w-4" />
-              Explore the admin console
-            </Button>
+            {DEMO_UI && (
+              <>
+                <div className="relative py-1">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                  <div className="relative flex justify-center"><span className="bg-card px-2 text-xs text-muted-foreground">or explore instantly</span></div>
+                </div>
+                <Button variant="secondary" onClick={() => logInDemo("customer")}>
+                  <UserRound className="h-4 w-4" />
+                  Continue as demo customer
+                </Button>
+                <Button variant="ghost" onClick={() => logInDemo("admin")}>
+                  <ShieldCheck className="h-4 w-4" />
+                  Explore the admin console
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
-        <p className="mt-4 text-xs text-muted-foreground">
-          Demo accounts come pre-loaded with realistic cases. All data stays in the local
-          development database.
-        </p>
+        {DEMO_UI && (
+          <p className="mt-4 text-xs text-muted-foreground">
+            Demo accounts come pre-loaded with realistic cases. All data stays in the local
+            development database.
+          </p>
+        )}
       </div>
     );
   }

@@ -11,8 +11,10 @@
     "typecheck": "tsc --noEmit",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
+    "db:migration:new": "node scripts/new-migration.mjs",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "admin:provision": "tsx scripts/provision-admin.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

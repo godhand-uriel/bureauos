@@ -127,7 +127,7 @@ interface BureauState {
 
   // Auth (demo-grade sessions; enforced server-side)
   signUp: (name: string, email: string, password: string, usState: string) => Promise<{ ok: boolean; error?: string }>;
-  logIn: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  logIn: (email: string, password: string, totp?: string) => Promise<{ ok: boolean; error?: string }>;
   logInDemo: (role: UserRole) => Promise<void>;
   logOut: () => Promise<void>;
   updateProfile: (partial: Partial<Pick<User, "name" | "email" | "usState" | "phone">>) => void;
@@ -302,10 +302,21 @@ export const useBureauStore = create<BureauState>()((set, get) => {
       return { ok: true };
     },
 
-    logIn: async (email, password) => {
-      const res = await authSignIn("credentials", { email, password, redirect: false }).catch(() => null);
+    logIn: async (email, password, totp) => {
+      const res = await authSignIn("credentials", {
+        email,
+        password,
+        ...(totp ? { totp } : {}),
+        redirect: false,
+      }).catch(() => null);
       if (!res) return { ok: false, error: "Network error — is the server running?" };
-      if (res.error) return { ok: false, error: "Invalid email or password." };
+      if (res.error) {
+        return {
+          ok: false,
+          error:
+            "Sign-in failed. Check your email and password — and if your account has MFA enabled, include the current authenticator code.",
+        };
+      }
       await loadBootstrap();
       return { ok: true };
     },

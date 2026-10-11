@@ -29,9 +29,12 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
-  // Demo-grade credential storage (scrypt). Replaced by a real auth provider.
+  // Scrypt hash backing the Auth.js credentials provider.
   passwordHash String   @default("")
   role         String   @default("customer") // "customer" | "admin"
+  // Staff MFA (RFC 6238 TOTP). Required for admin sign-in in production.
+  mfaSecret    String   @default("") // base32; set during enrollment
+  mfaEnabled   Boolean  @default(false)
   usState      String   @default("")
   phone        String   @default("")
   createdAt    DateTime @default(now())

@@ -7,11 +7,20 @@ import { billingInputSchema } from "@/lib/schemas";
 import { getTier } from "@/lib/packages";
 
 /**
- * SIMULATED billing — no payment processor is wired. Sets the user's plan and
- * records a mock billing entry. Stripe Checkout + verified webhooks replace
- * this route in production.
+ * SIMULATED billing — a development/demo mock only. Sets the user's plan and
+ * records a mock billing entry so local demos can exercise tier-gated flows.
+ *
+ * Refused in production: plan/tier state is a paid entitlement, and
+ * entitlements may only come from verified payment state (Stripe webhook) or
+ * an audited staff override — never from a customer-callable simulation.
  */
 export async function POST(request: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "Plan changes are not available. Paid packages are not yet offered." },
+      { status: 503 },
+    );
+  }
   const user = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -42,8 +51,11 @@ export async function POST(request: Request) {
   return NextResponse.json({ subscription: subscriptionToDomain(subscription), notifications });
 }
 
-/** Cancel the paid plan and revert to Self-Service. */
+/** Cancel the paid plan and revert to Self-Service (dev/demo simulation only). */
 export async function DELETE() {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Plan changes are not available." }, { status: 503 });
+  }
   const user = await getSessionUser();
   if (!user) return unauthorized();
 

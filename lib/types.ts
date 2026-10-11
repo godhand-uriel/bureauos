@@ -190,9 +190,11 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  /** Demo-grade local hash. Replaced entirely by Clerk/Supabase/Auth.js in production. */
+  /** Always "" on the client — the hash never leaves the server. */
   passwordHash: string;
   role: UserRole;
+  /** Whether TOTP MFA is enrolled (the secret itself is never serialized). */
+  mfaEnabled: boolean;
   usState: string;
   phone: string;
   createdAt: string;

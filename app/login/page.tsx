@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Landmark, LogIn, ShieldCheck, UserRound } from "lucide-react";
@@ -10,6 +10,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StoreSeeder } from "@/components/store-seeder";
 import { useBureauStore, DEMO_CUSTOMER_EMAIL, DEMO_PASSWORD } from "@/lib/store";
+import { safeNextPath } from "@/lib/server/request-guards";
+
+/** Demo sign-in surfaces are compiled out of production builds entirely;
+ *  the server additionally refuses demo-account credentials in production. */
+const DEMO_UI = process.env.NODE_ENV !== "production";
+
+/** Post-login destination from ?next= (same-site relative paths only). */
+function nextDestination(fallback = "/dashboard"): string {
+  if (typeof window === "undefined") return fallback;
+  return safeNextPath(new URLSearchParams(window.location.search).get("next"), fallback);
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,13 +28,18 @@ export default function LoginPage() {
   const logInDemo = useBureauStore((s) => s.logInDemo);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Carried to the signup link after mount (reading it during render would
+  // mismatch the server-rendered markup).
+  const [query, setQuery] = useState("");
+  useEffect(() => setQuery(window.location.search), []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await logIn(email, password);
+    const result = await logIn(email, password, totp.trim() || undefined);
     if (result.ok) {
-      router.push("/dashboard");
+      router.push(nextDestination());
     } else {
       setError(result.error ?? "Login failed.");
     }
@@ -72,6 +88,20 @@ export default function LoginPage() {
                 required
               />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="totp">
+                Authenticator code{" "}
+                <span className="font-normal text-muted-foreground">(if MFA is enabled)</span>
+              </Label>
+              <Input
+                id="totp"
+                inputMode="numeric"
+                value={totp}
+                onChange={(e) => setTotp(e.target.value)}
+                placeholder="123456"
+                autoComplete="one-time-code"
+              />
+            </div>
             {error && (
               <p className="text-sm text-red-400" role="alert">{error}</p>
             )}
@@ -81,49 +111,55 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="relative py-5">
-            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-            <div className="relative flex justify-center"><span className="bg-card px-2 text-xs text-muted-foreground">or explore instantly</span></div>
-          </div>
+          {DEMO_UI && (
+            <>
+              <div className="relative py-5">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                <div className="relative flex justify-center"><span className="bg-card px-2 text-xs text-muted-foreground">or explore instantly</span></div>
+              </div>
 
-          <div className="grid gap-2">
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                await logInDemo("customer");
-                router.push("/dashboard");
-              }}
-            >
-              <UserRound className="h-4 w-4" />
-              Continue as demo customer
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={async () => {
-                await logInDemo("admin");
-                router.push("/admin");
-              }}
-            >
-              <ShieldCheck className="h-4 w-4" />
-              Explore the admin console
-            </Button>
-          </div>
+              <div className="grid gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    await logInDemo("customer");
+                    router.push("/dashboard");
+                  }}
+                >
+                  <UserRound className="h-4 w-4" />
+                  Continue as demo customer
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    await logInDemo("admin");
+                    router.push("/admin");
+                  }}
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  Explore the admin console
+                </Button>
+              </div>
+            </>
+          )}
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             New here?{" "}
-            <Link href="/signup" className="font-medium text-primary hover:underline">
+            <Link href={`/signup${query}`} className="font-medium text-primary hover:underline">
               Create an account
             </Link>
           </p>
         </CardContent>
       </Card>
 
-      <p className="mt-6 max-w-md text-center text-xs text-muted-foreground">
-        Auth.js sign-in against the local development database. Demo customer:{" "}
-        <code className="text-foreground/80">{DEMO_CUSTOMER_EMAIL}</code> /{" "}
-        <code className="text-foreground/80">{DEMO_PASSWORD}</code> — demo accounts exist for
-        local exploration only.
-      </p>
+      {DEMO_UI && (
+        <p className="mt-6 max-w-md text-center text-xs text-muted-foreground">
+          Auth.js sign-in against the local development database. Demo customer:{" "}
+          <code className="text-foreground/80">{DEMO_CUSTOMER_EMAIL}</code> /{" "}
+          <code className="text-foreground/80">{DEMO_PASSWORD}</code> — demo accounts exist in
+          development only and are refused by production sign-in.
+        </p>
+      )}
     </div>
   );
 }

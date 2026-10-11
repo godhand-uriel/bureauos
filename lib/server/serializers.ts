@@ -95,6 +95,7 @@ export function userToDomain(u: DbUserWithPrefs): User {
     email: u.email,
     passwordHash: "", // never serialized to clients
     role: u.role as User["role"],
+    mfaEnabled: u.mfaEnabled, // the secret (u.mfaSecret) is never serialized
     usState: u.usState,
     phone: u.phone,
     createdAt: iso(u.createdAt),

@@ -23,7 +23,12 @@ export type CaseActionResult =
   | { ok: true; case: Case; notifications: NotificationEvent[] }
   | { ok: false; status: number; error: string };
 
-const ADMIN_ONLY = new Set(["assign", "add_admin_note"]);
+/**
+ * set_tier is staff-only: a case's service tier is an ENTITLEMENT. Customers
+ * acquire entitlements exclusively through verified server-side payment state
+ * (the Stripe webhook), never by asking this API to raise their own tier.
+ */
+const ADMIN_ONLY = new Set(["assign", "add_admin_note", "set_tier"]);
 
 async function loadCase(id: string): Promise<DbCase | null> {
   return prisma.case.findUnique({ where: { id }, include: caseInclude });
@@ -89,13 +94,12 @@ export async function performCaseAction(
     }
 
     case "set_tier":
+      // Staff override only (ADMIN_ONLY above) — always audited.
       await prisma.case.update({
         where: { id: caseId },
         data: { serviceTier: action.tier, updatedAt: now },
       });
-      if (isAdmin && existing.userId !== user.id) {
-        await writeAudit(user, "case.set_tier", "case", caseId, `${existing.serviceTier} → ${action.tier}`, caseId);
-      }
+      await writeAudit(user, "case.set_tier", "case", caseId, `${existing.serviceTier} → ${action.tier}`, caseId);
       break;
 
     case "assign":
@@ -167,6 +171,19 @@ export async function performCaseAction(
     }
 
     case "regenerate_plan": {
+      // A plan may only exist for a case whose intake was completed — which
+      // itself required the per-case acceptance. Without this check a direct
+      // API call could generate a plan while skipping both gates.
+      if (!existing.intakeCompleted) {
+        return { ok: false, status: 409, error: "Complete the intake before generating a plan." };
+      }
+      if (!isAdmin && !(await hasCaseAcceptance(existing.userId, caseId))) {
+        return {
+          ok: false,
+          status: 403,
+          error: "Terms, privacy, and disclaimer acceptance is required for this case first.",
+        };
+      }
       const domain = caseToDomain(existing, { includeAdminNotes: true });
       await persistEngineResult(existing, generatePlanForCase(domain), {});
       break;
