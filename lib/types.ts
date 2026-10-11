@@ -78,13 +78,50 @@ export interface DocumentRequirement {
   required: boolean;
 }
 
+/**
+ * - official       a statutory/agency deadline. It carries a date ONLY when a
+ *                  source-checked rule was applied to the actual triggering
+ *                  event; otherwise `date` is null → shown as NEEDS VERIFICATION.
+ * - self_reported  a date the user copied from their own notice.
+ * - suggested      a BureauOS follow-up target. Not a legal deadline.
+ */
+export type DeadlineKind = "official" | "self_reported" | "suggested";
+
+export interface DeadlineSource {
+  ruleId: string;
+  jurisdiction: string;
+  ruleSummary: string;
+  citation: string;
+  url: string;
+  /** Calendar date the rule text was last checked against the source. */
+  checkedOn: string;
+  caveats: string;
+}
+
+export interface DeadlineTrigger {
+  /** Intake answer holding the triggering event's date. */
+  questionId: string;
+  label: string;
+  /** The date the count ran from, or null when it has not been provided. */
+  date: string | null;
+  mayBeFuture: boolean;
+}
+
 export interface Deadline {
   id: string;
+  /** Stable identity across plan regenerations (rule id or slugged title). */
+  key: string;
   title: string;
-  date: string;
+  kind: DeadlineKind;
+  /** Calendar date `YYYY-MM-DD`, or null when it has not been established. */
+  date: string | null;
   note?: string;
-  /** Deadlines from the rule engine are estimates the user must verify. */
+  /** The user confirmed this date against their official notice. */
   verified: boolean;
+  /** Present on official deadlines backed by a source-checked rule. */
+  source?: DeadlineSource;
+  /** Present when the deadline is (or could be) calculated from a trigger date. */
+  trigger?: DeadlineTrigger;
 }
 
 export type TimelineEventType =
@@ -425,6 +462,12 @@ export interface JurisdictionRule {
   officialLinks: { label: string; url: string }[];
   disclaimer: string;
   lastUpdated: string;
+  /**
+   * "source_checked": text checked against the linked source on `lastUpdated`
+   * (an engineering check, pending counsel review) — shown to customers.
+   * "unverified_sample": illustrative content, never shown as guidance.
+   */
+  reviewStatus: "source_checked" | "unverified_sample";
 }
 
 /* ------------------------------------------------------------------ */
@@ -445,11 +488,20 @@ export interface DocumentTemplate {
   required: boolean;
 }
 
-export interface DeadlineTemplate {
-  title: string;
-  inDays: number;
-  note?: string;
-}
+/**
+ * What a navigator's rule logic may ask the plan engine to track. Note what
+ * is NOT expressible here: an "official" deadline with a hand-picked date.
+ * Official dates come only from the rule registry (lib/deadline-rules.ts).
+ */
+export type DeadlineSpec =
+  /** A follow-up target N days out. Labeled as a suggestion, never as a deadline. */
+  | { kind: "suggested"; title: string; inDays: number; note?: string }
+  /** A date the user entered from their own notice (an intake answer). */
+  | { kind: "self_reported"; title: string; date: unknown; note?: string }
+  /** A source-checked rule; the engine calculates it or marks it NEEDS VERIFICATION. */
+  | { kind: "official"; ruleId: string; note?: string }
+  /** A real deadline exists but BureauOS has no verified rule for it — always NEEDS VERIFICATION. */
+  | { kind: "official_unavailable"; key: string; title: string; note: string };
 
 export interface LetterField {
   id: string;
@@ -481,7 +533,7 @@ export interface PlanResult {
   nextActions: { title: string; detail: string }[];
   extraTasks: TaskTemplate[];
   extraDocuments: DocumentTemplate[];
-  deadlines: DeadlineTemplate[];
+  deadlines: DeadlineSpec[];
   riskFlags: Omit<RiskFlag, "id">[];
   suggestedLetterTemplateId?: string;
   timelineEntries: { title: string; detail?: string }[];
@@ -496,6 +548,11 @@ export interface NavigatorDef {
   /** Lucide icon key resolved in components/navigator-icon.tsx */
   icon: string;
   accent: string; // tailwind-safe hsl string for badges/accents
+  /**
+   * "live": validated for the commercial launch. "preview": general
+   * organization tools only — no paid products, no verified deadline rules.
+   */
+  launchStatus: "live" | "preview";
   problems: string[];
   questions: IntakeQuestion[];
   baseTasks: TaskTemplate[];

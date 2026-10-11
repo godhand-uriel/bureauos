@@ -6,20 +6,20 @@ import { ArrowRight, CalendarClock, ClipboardList, FilePen, FileText, ListOrdere
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Callout } from "@/components/callout";
-import { DeadlineCard } from "@/components/deadline-card";
+import { DeadlineList } from "@/components/deadline-list";
 import { EmptyState } from "@/components/empty-state";
 import { PriorityBadge } from "@/components/status-badge";
 import { getNavigator } from "@/lib/navigators";
 import { rulesForCase } from "@/lib/jurisdictions";
+import { formatDateOnly } from "@/lib/dates";
 import { useBureauStore, useCase, useHydrated } from "@/lib/store";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 
 export default function PlanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const hydrated = useHydrated();
   const kase = useCase(id);
   const regeneratePlan = useBureauStore((s) => s.regeneratePlan);
-  const toggleDeadlineVerified = useBureauStore((s) => s.toggleDeadlineVerified);
 
   if (!hydrated || !kase) return null;
   const nav = getNavigator(kase.navigatorSlug);
@@ -57,12 +57,24 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
   const suggestedTemplate = plan.suggestedLetterTemplateId
     ? nav?.letterTemplates.find((t) => t.id === plan.suggestedLetterTemplateId)
     : undefined;
-  const pendingDeadlines = [...kase.deadlines].sort((a, b) => a.date.localeCompare(b.date));
   const requiredDocs = kase.documents.filter((d) => d.required);
   const jurisdictionRules = rulesForCase(kase.navigatorSlug, kase.intake.answers.state);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      {nav?.launchStatus === "preview" && (
+        <Callout variant="warning" title="Preview navigator">
+          This navigator offers general organizing tools only. BureauOS has not validated
+          state-specific rules or deadlines for it, so any deadline here is either a date you
+          entered or marked as needing verification.
+        </Callout>
+      )}
+      {!kase.intake.completed && (
+        <Callout variant="info" title="Intake reopened">
+          You&apos;re updating your answers. This plan reflects your previous answers until you
+          finish the intake again.
+        </Callout>
+      )}
       {/* Summary */}
       <Card className="border-primary/30">
         <CardHeader>
@@ -135,26 +147,11 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <CalendarClock className="h-4 w-4 text-primary" />
-            Deadlines to verify
+            Deadlines and dates
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          {pendingDeadlines.length === 0 ? (
-            <p className="py-2 text-sm text-muted-foreground">No deadlines flagged for this case.</p>
-          ) : (
-            <>
-              <p className="pb-1 text-xs text-muted-foreground">
-                These are estimates from your answers — verify each against official notices, then check it off.
-              </p>
-              {pendingDeadlines.map((d) => (
-                <DeadlineCard
-                  key={d.id}
-                  deadline={d}
-                  onToggleVerified={() => toggleDeadlineVerified(kase.id, d.id)}
-                />
-              ))}
-            </>
-          )}
+        <CardContent>
+          <DeadlineList kase={kase} />
         </CardContent>
       </Card>
 
@@ -240,13 +237,15 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground/80">
-                    {rule.disclaimer} Last updated {formatDate(rule.lastUpdated)}.
+                    {rule.disclaimer} Source checked {formatDateOnly(rule.lastUpdated)}.
                   </p>
                 </div>
               </details>
             ))}
             <p className="text-xs text-muted-foreground">
-              Sample jurisdiction data — expand a note for steps and official links. Always verify with the agency listed.
+              Each note was checked against the linked source on the date shown and is pending
+              attorney review. Expand a note for steps and official links, and verify with the
+              agency listed.
             </p>
           </CardContent>
         </Card>

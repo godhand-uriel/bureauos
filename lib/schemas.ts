@@ -403,7 +403,14 @@ export const caseActionSchema = z.discriminatedUnion("type", [
     step: z.number().int().min(0).max(200),
   }),
   z.object({ type: z.literal("complete_intake") }),
+  z.object({ type: z.literal("reopen_intake") }),
   z.object({ type: z.literal("regenerate_plan") }),
+  z.object({
+    type: z.literal("set_trigger_date"),
+    questionId: z.string().min(1).max(80),
+    /** Calendar date, YYYY-MM-DD. */
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  }),
   z.object({ type: z.literal("toggle_task"), taskId: clientId }),
   z.object({ type: z.literal("add_task"), id: clientId, title: z.string().trim().min(1).max(300) }),
   z.object({

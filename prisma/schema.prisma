@@ -141,14 +141,21 @@ model DocumentRequirement {
   @@index([caseId])
 }
 
+// kind: "official" | "self_reported" | "suggested" (lib/types.ts → DeadlineKind).
+// An official deadline has a date ONLY when a source-checked rule was applied
+// to the real triggering event; otherwise date is NULL (NEEDS VERIFICATION).
 model Deadline {
-  id       String   @id @default(cuid())
-  case     Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  caseId   String
-  title    String
-  date     DateTime
-  note     String?
-  verified Boolean  @default(false)
+  id          String    @id @default(cuid())
+  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId      String
+  key         String    @default("") // stable identity across plan regenerations
+  title       String
+  kind        String    @default("suggested")
+  date        DateTime? // calendar date stored at 12:00 UTC; NULL = not established
+  note        String?
+  verified    Boolean   @default(false)
+  sourceJson  String? // serialized DeadlineSource (rule citation, URL, check date)
+  triggerJson String? // serialized DeadlineTrigger (what the date was counted from)
 
   @@index([caseId])
 }

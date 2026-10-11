@@ -4,9 +4,9 @@ import { getNavigator } from "@/lib/navigators";
 import { daysFromNow, uid } from "@/lib/utils";
 
 /**
- * Demo seed data: four realistic cases built by actually running each
- * navigator's intake + plan engine, then simulating some user progress so
- * the app feels lived-in on first open.
+ * Demo seed data (development only): realistic cases built by actually
+ * running each navigator's intake + plan engine, then simulating some user
+ * progress so the app feels lived-in on first open.
  */
 
 interface SeedSpec {
@@ -20,6 +20,37 @@ interface SeedSpec {
 }
 
 const SEEDS: SeedSpec[] = [
+  {
+    // The launch product: a Florida job-separation case with real trigger
+    // dates, so the demo shows calculated, source-backed deadlines next to
+    // one that still needs verification (no COBRA notice received yet).
+    slug: "job-separation",
+    title: "Layoff — Sunrise Logistics",
+    createdDaysAgo: 9,
+    answers: {
+      separation_type: "laid_off",
+      last_day: daysFromNow(-20).slice(0, 10),
+      state: "Florida",
+      received_final_pay: false,
+      next_regular_payday: daysFromNow(5).slice(0, 10),
+      had_health_insurance: true,
+      coverage_end_date: daysFromNow(10).slice(0, 10),
+      employer_size: "20_plus",
+      cobra_notice_received: false,
+      severance_offered: false,
+      filed_unemployment: "denied",
+      ra_determination_mailed_date: daysFromNow(-6).slice(0, 10),
+      documents_on_hand: ["paystubs", "termination_letter"],
+      hr_contact: { name: "HR Department", organization: "Sunrise Logistics" },
+      situation_notes:
+        "Position eliminated in a restructuring. Final check hasn't arrived and the unemployment claim was denied over a wage-reporting issue.",
+    },
+    completeTaskCount: 2,
+    obtainDocCount: 2,
+    extraTimeline: [
+      { daysAgo: 6, title: "Received determination notice", detail: "Reemployment Assistance determination arrived by mail." },
+    ],
+  },
   {
     slug: "tenant-rights",
     title: "Bathroom ceiling leak — Oakwood Apt 4B",

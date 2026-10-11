@@ -9,7 +9,8 @@ import { ReviewStatusBadge, TicketStatusBadge, TierBadge } from "@/components/pl
 import { getNavigator } from "@/lib/navigators";
 import { caseProgress } from "@/lib/plan-engine";
 import { useBureauStore, useHydrated } from "@/lib/store";
-import { daysUntil, formatDate, formatDateTime, relativeDeadline } from "@/lib/utils";
+import { daysFromToday, relativeDay } from "@/lib/dates";
+import { formatDate, formatDateTime } from "@/lib/utils";
 
 export default function AdminOverviewPage() {
   const hydrated = useHydrated();
@@ -32,10 +33,15 @@ export default function AdminOverviewPage() {
   const missingDocsCases = openCases
     .map((c) => ({ kase: c, missing: c.documents.filter((d) => d.required && d.status !== "obtained" && d.status !== "not_applicable").length }))
     .filter((x) => x.missing > 0);
-  const upcomingDeadlines = cases
-    .flatMap((c) => c.deadlines.filter((d) => !d.verified && daysUntil(d.date) <= 14).map((d) => ({ deadline: d, kase: c })))
-    .sort((a, b) => a.deadline.date.localeCompare(b.deadline.date))
-    .slice(0, 6);
+  // Official / notice deadlines only: due within 14 days, or still undated.
+  const upcomingDeadlines = openCases
+    .flatMap((c) =>
+      c.deadlines
+        .filter((d) => d.kind !== "suggested" && (d.date === null || daysFromToday(d.date) <= 14))
+        .map((d) => ({ deadline: d, kase: c })),
+    )
+    .sort((a, b) => (a.deadline.date ?? "9999").localeCompare(b.deadline.date ?? "9999"))
+    .slice(0, 8);
 
   const stats = [
     { label: "Open cases", value: openCases.length, icon: FolderOpen },
@@ -43,7 +49,7 @@ export default function AdminOverviewPage() {
     { label: "Reviews pending", value: pendingReviews.length, icon: ClipboardCheck },
     { label: "Open tickets", value: openTickets.length, icon: LifeBuoy },
     { label: "Files to verify", value: pendingFiles.length, icon: FileWarning },
-    { label: "Deadlines ≤ 14d", value: upcomingDeadlines.length, icon: CalendarClock },
+    { label: "Deadlines to watch", value: upcomingDeadlines.length, icon: CalendarClock },
   ];
 
   return (
@@ -182,20 +188,24 @@ export default function AdminOverviewPage() {
         {/* Upcoming deadlines */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Upcoming customer deadlines (14 days)</CardTitle>
+            <CardTitle className="text-base">Customer deadlines: due within 14 days or unverified</CardTitle>
           </CardHeader>
           <CardContent>
             {upcomingDeadlines.length === 0 ? (
-              <p className="py-2 text-sm text-muted-foreground">No unverified deadlines in the next two weeks.</p>
+              <p className="py-2 text-sm text-muted-foreground">No official deadlines due or awaiting verification.</p>
             ) : (
               <ul className="space-y-2">
                 {upcomingDeadlines.map(({ deadline, kase }) => (
                   <li key={deadline.id} className="rounded-lg border border-border bg-card/50 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium">{deadline.title}</p>
-                      <Badge variant={daysUntil(deadline.date) < 0 ? "destructive" : "warning"} className="text-[10px]">
-                        {relativeDeadline(deadline.date)}
-                      </Badge>
+                      {deadline.date ? (
+                        <Badge variant={daysFromToday(deadline.date) < 0 ? "destructive" : "warning"} className="text-[10px]">
+                          {relativeDay(deadline.date)}
+                        </Badge>
+                      ) : (
+                        <Badge variant="warning" className="text-[10px]">Needs verification</Badge>
+                      )}
                     </div>
                     <Link href={`/admin/cases/${kase.id}`} className="mt-0.5 block text-xs text-primary hover:underline">
                       {kase.title} · {customerName(kase.userId)}

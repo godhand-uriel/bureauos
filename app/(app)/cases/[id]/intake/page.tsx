@@ -3,13 +3,14 @@
 import { use, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, PencilLine, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Callout } from "@/components/callout";
 import { DisclaimerGate } from "@/components/disclaimer-gate";
-import { IntakeQuestionField, isAnswered, isQuestionVisible } from "@/components/intake-renderer";
+import { IntakeQuestionField } from "@/components/intake-renderer";
+import { isAnswered, pruneHiddenAnswers, visibleQuestions as listVisibleQuestions } from "@/lib/intake";
 import { getNavigator } from "@/lib/navigators";
 import { useBureauStore, useCase, useHasAccepted, useHydrated } from "@/lib/store";
 import type { AnswerValue } from "@/lib/types";
@@ -21,6 +22,7 @@ export default function IntakePage({ params }: { params: Promise<{ id: string }>
   const kase = useCase(id);
   const saveIntakeProgress = useBureauStore((s) => s.saveIntakeProgress);
   const completeIntake = useBureauStore((s) => s.completeIntake);
+  const reopenIntake = useBureauStore((s) => s.reopenIntake);
   const hasAccepted = useHasAccepted(id);
 
   // Local draft of answers; persisted on every navigation step.
@@ -36,7 +38,7 @@ export default function IntakePage({ params }: { params: Promise<{ id: string }>
     [draft, kase?.intake.answers],
   );
   const visibleQuestions = useMemo(
-    () => (nav ? nav.questions.filter((q) => isQuestionVisible(q, answers)) : []),
+    () => (nav ? listVisibleQuestions(nav.questions, answers) : []),
     [nav, answers],
   );
 
@@ -52,15 +54,31 @@ export default function IntakePage({ params }: { params: Promise<{ id: string }>
           <div>
             <h2 className="text-lg font-semibold">Intake complete</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Your answers generated a personalized action plan for this case.
+              Your answers generated a personalized action plan for this case. If something
+              changes — a new notice arrives, a claim is decided — update your answers and the
+              plan and deadlines are recalculated.
             </p>
           </div>
-          <Link href={`/cases/${kase.id}/plan`}>
-            <Button>
-              View your action plan
-              <ArrowRight className="h-4 w-4" />
+          <div className="flex flex-wrap justify-center gap-2">
+            <Link href={`/cases/${kase.id}/plan`}>
+              <Button>
+                View your action plan
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                setDraft(null);
+                setStep(0);
+                setShowGate(false);
+                await reopenIntake(kase.id);
+              }}
+            >
+              <PencilLine className="h-4 w-4" />
+              Update my answers
             </Button>
-          </Link>
+          </div>
         </CardContent>
       </Card>
     );
@@ -79,8 +97,14 @@ export default function IntakePage({ params }: { params: Promise<{ id: string }>
   const finish = async () => {
     // Await the answer save, then server-side plan generation, then navigate —
     // the plan page reads the engine output that the server produced.
-    await saveIntakeProgress(kase.id, answers, currentStep);
-    await completeIntake(kase.id);
+    // Answers on branches the user backed out of are dropped first.
+    await saveIntakeProgress(kase.id, pruneHiddenAnswers(nav.questions, answers), currentStep);
+    const result = await completeIntake(kase.id);
+    if (!result.ok) {
+      setShowGate(false);
+      setError(result.error ?? "Could not generate your plan. Try again.");
+      return;
+    }
     router.push(`/cases/${kase.id}/plan`);
   };
 
@@ -195,8 +219,9 @@ export default function IntakePage({ params }: { params: Promise<{ id: string }>
 
       {currentStep === 0 && (
         <Callout variant="info">
-          Answer in plain language — there are no wrong answers. You can change any answer later by
-          restarting intake, and everything stays on this device.
+          Answer in plain language — there are no wrong answers, and you can update them later.
+          Leave a date blank if you don&apos;t have the paperwork in front of you: BureauOS never
+          guesses a deadline, it marks it as needing verification until you add the real date.
         </Callout>
       )}
     </div>

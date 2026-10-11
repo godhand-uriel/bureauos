@@ -13,6 +13,7 @@ import { Timeline } from "@/components/timeline";
 import { NAVIGATORS } from "@/lib/navigators";
 import { caseProgress, nextActionFor } from "@/lib/plan-engine";
 import { useBureauStore, useCurrentUser, useHydrated, useMyCases } from "@/lib/store";
+import type { Deadline } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 
 export default function DashboardPage() {
@@ -35,10 +36,21 @@ export default function DashboardPage() {
   }
 
   const activeCases = cases.filter((c) => c.status !== "closed" && c.status !== "resolved");
-  const upcomingDeadlines = cases
-    .flatMap((c) => c.deadlines.filter((d) => !d.verified).map((d) => ({ deadline: d, kase: c })))
-    .sort((a, b) => a.deadline.date.localeCompare(b.deadline.date))
-    .slice(0, 5);
+  // Official and notice dates first (dated, then those still needing a date),
+  // suggested follow-ups last. Completed suggestions drop off.
+  const deadlineRank = (d: Deadline) => (d.kind === "suggested" ? 2 : d.date ? 0 : 1);
+  const upcomingDeadlines = activeCases
+    .flatMap((c) =>
+      c.deadlines
+        .filter((d) => !(d.kind === "suggested" && d.verified))
+        .map((d) => ({ deadline: d, kase: c })),
+    )
+    .sort(
+      (a, b) =>
+        deadlineRank(a.deadline) - deadlineRank(b.deadline) ||
+        (a.deadline.date ?? "").localeCompare(b.deadline.date ?? ""),
+    )
+    .slice(0, 6);
   const openTasks = cases
     .flatMap((c) => c.tasks.filter((t) => !t.done).map((t) => ({ task: t, kase: c })))
     .sort((a, b) => (a.task.dueDate || "9999").localeCompare(b.task.dueDate || "9999"))
@@ -112,13 +124,13 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <CalendarClock className="h-4 w-4 text-primary" />
-              Upcoming deadlines
+              Deadlines and dates to watch
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {upcomingDeadlines.length === 0 ? (
               <p className="py-4 text-sm text-muted-foreground">
-                No unverified deadlines. Deadlines appear here when action plans generate them.
+                Nothing to track yet. Deadlines appear here once a case has an action plan.
               </p>
             ) : (
               upcomingDeadlines.map(({ deadline, kase }) => (
@@ -126,6 +138,7 @@ export default function DashboardPage() {
                   key={deadline.id}
                   deadline={deadline}
                   caseTitle={kase.title}
+                  compact
                   onToggleVerified={() => toggleDeadlineVerified(kase.id, deadline.id)}
                 />
               ))

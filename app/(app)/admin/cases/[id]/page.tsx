@@ -14,9 +14,10 @@ import { FileStatusBadge, ReviewStatusBadge, TierBadge } from "@/components/plat
 import { fileCategoryLabel } from "@/components/file-upload-panel";
 import { Timeline } from "@/components/timeline";
 import { getNavigator } from "@/lib/navigators";
-import { caseProgress } from "@/lib/plan-engine";
+import { caseProgress, sortDeadlines } from "@/lib/plan-engine";
 import { useBureauStore, useCurrentUser, useHydrated } from "@/lib/store";
-import { formatDate, formatDateTime, relativeDeadline } from "@/lib/utils";
+import { formatDateOnly, relativeDay } from "@/lib/dates";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import type { CaseStatus } from "@/lib/types";
 
 const STAFF = ["Alex Reyes", "Sam Whitfield", "Priya Nand"];
@@ -53,7 +54,7 @@ export default function AdminCasePage({ params }: { params: Promise<{ id: string
   const nav = getNavigator(kase.navigatorSlug);
   const missingDocs = kase.documents.filter((d) => d.required && d.status !== "obtained" && d.status !== "not_applicable");
   const openTasks = kase.tasks.filter((t) => !t.done);
-  const pendingDeadlines = kase.deadlines.filter((d) => !d.verified).sort((a, b) => a.date.localeCompare(b.date));
+  const pendingDeadlines = sortDeadlines(kase.deadlines.filter((d) => d.kind !== "suggested"));
 
   return (
     <div className="space-y-6">
@@ -148,7 +149,7 @@ export default function AdminCasePage({ params }: { params: Promise<{ id: string
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Unverified deadlines ({pendingDeadlines.length})
+                  Official / notice deadlines ({pendingDeadlines.length})
                 </p>
                 {pendingDeadlines.length === 0 ? (
                   <p className="mt-1.5 text-muted-foreground">None.</p>
@@ -157,7 +158,9 @@ export default function AdminCasePage({ params }: { params: Promise<{ id: string
                     {pendingDeadlines.map((d) => (
                       <li key={d.id} className="flex items-center justify-between gap-2 text-muted-foreground">
                         <span>{d.title}</span>
-                        <span className="text-xs">{relativeDeadline(d.date)}</span>
+                        <span className="text-xs">
+                          {d.date ? `${formatDateOnly(d.date)} · ${relativeDay(d.date)}` : "needs verification"}
+                        </span>
                       </li>
                     ))}
                   </ul>

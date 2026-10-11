@@ -1,5 +1,4 @@
 import type { NavigatorDef, PlanResult } from "@/lib/types";
-import { daysUntil } from "@/lib/utils";
 
 const tenantRights: NavigatorDef = {
   slug: "tenant-rights",
@@ -10,6 +9,7 @@ const tenantRights: NavigatorDef = {
     "Intake for rent and habitability issues, a repair request tracker, a formal notice/letter generator, a lease document checklist, and a dated timeline of every landlord communication.",
   icon: "home",
   accent: "199 89% 48%",
+  launchStatus: "preview",
   problems: [
     "Repairs requested but never done",
     "Security deposit disputes",
@@ -201,9 +201,9 @@ ${v.unit_address || "[YOUR ADDRESS]"}`,
       ];
       if (severity === "emergency") {
         plan.riskFlags.push({ label: "Emergency habitability", detail: "No heat, water, or unsafe conditions may violate housing codes right now. City code enforcement can inspect and order repairs independent of your landlord's cooperation.", severity: "critical" });
-        plan.deadlines.push({ title: "Follow up if no landlord response", inDays: 2, note: "For emergencies, escalate to code enforcement fast if the landlord is silent." });
+        plan.deadlines.push({ kind: "suggested", title: "Follow up if no landlord response", inDays: 2, note: "For emergencies, escalate to code enforcement fast if the landlord is silent." });
       } else {
-        plan.deadlines.push({ title: "Follow up on repair request", inDays: 14, note: "If no response or repair within ~14 days, send a follow-up and consider code enforcement." });
+        plan.deadlines.push({ kind: "suggested", title: "Follow up on repair request", inDays: 14, note: "A follow-up target, not a legal deadline: if there's no response or repair by then, send a follow-up and consider code enforcement." });
       }
       plan.riskFlags.push({ label: "Don't withhold rent without advice", detail: `Rent withholding is legal in some states only under strict conditions — done wrong it becomes grounds for eviction. Talk to ${state} legal aid first.`, severity: "warning" });
     } else if (issue === "deposit") {
@@ -215,7 +215,7 @@ ${v.unit_address || "[YOUR ADDRESS]"}`,
         { title: "Send a written demand letter", detail: "Demand the deposit or a lawful itemized statement, cite the state deadline, and set a response date. Small claims court is the standard next step and is designed for exactly this." },
       ];
       plan.extraDocuments.push({ name: "Move-out photos / video walkthrough", required: true }, { name: "Forwarding address proof sent to landlord", required: false, description: "Many states start the return clock when you provide a forwarding address in writing." });
-      plan.deadlines.push({ title: "Verify state deposit return deadline", inDays: 5, note: `Look up the exact ${state} deadline and compare it to your move-out date.` });
+      plan.deadlines.push({ kind: "official_unavailable", key: "deposit-return", title: "Security deposit return deadline", note: `BureauOS has no verified rule for ${state}. Look up the exact deadline and compare it to your move-out date.` });
     } else if (issue === "eviction_notice") {
       plan.priority = "urgent";
       plan.situationSummary = `You received an eviction or lease-violation notice in ${state}. Notices have short, hard deadlines, and the single most important fact is this: an eviction notice is not an eviction — only a court can order you out, and tenants who respond on time have real options. Speed matters more than anything else here.`;
@@ -225,9 +225,9 @@ ${v.unit_address || "[YOUR ADDRESS]"}`,
         { title: "Preserve every document and stay put", detail: "Keep the notice, envelope, lease, and payment records. Do not move out just because you got a notice — that can waive defenses. Respond to any court papers by their deadline, always." },
       ];
       if (typeof a.notice_deadline === "string" && a.notice_deadline) {
-        plan.deadlines.push({ title: "Deadline stated on the notice", inDays: daysUntil(a.notice_deadline), note: `You entered ${a.notice_deadline}. Act before this date — options narrow after it.` });
+        plan.deadlines.push({ kind: "self_reported", title: "Deadline stated on the notice", date: a.notice_deadline, note: "The date you entered from your notice. Act before it — options narrow afterward." });
       } else {
-        plan.deadlines.push({ title: "Find the notice deadline", inDays: 1, note: "The deadline is on the notice. Locate it today." });
+        plan.deadlines.push({ kind: "official_unavailable", key: "notice-deadline", title: "Deadline stated on your notice", note: "Not entered yet. The deadline is printed on the notice — locate it today." });
       }
       plan.riskFlags.push(
         { label: "Court deadline risk", detail: "If this becomes a court case, missing the answer deadline usually means an automatic loss (default judgment). Court papers outrank everything else on your to-do list.", severity: "critical" },

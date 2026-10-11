@@ -6,7 +6,7 @@ import { ArrowRight, CalendarClock, CheckSquare, ClipboardList, FilePen, FileTex
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Callout } from "@/components/callout";
-import { DeadlineCard } from "@/components/deadline-card";
+import { DeadlineList } from "@/components/deadline-list";
 import { NextActionPanel } from "@/components/next-action-panel";
 import { ServicePackagePanel } from "@/components/service-package-panel";
 import { TaskChecklist } from "@/components/task-checklist";
@@ -20,12 +20,10 @@ export default function CaseOverviewPage({ params }: { params: Promise<{ id: str
   const kase = useCase(id);
   const toggleTask = useBureauStore((s) => s.toggleTask);
   const addTask = useBureauStore((s) => s.addTask);
-  const toggleDeadlineVerified = useBureauStore((s) => s.toggleDeadlineVerified);
 
   if (!hydrated || !kase) return null; // layout handles loading & not-found
 
   const next = nextActionFor(kase);
-  const pendingDeadlines = kase.deadlines.filter((d) => !d.verified).sort((a, b) => a.date.localeCompare(b.date));
   const neededDocs = kase.documents.filter((d) => d.status === "needed" || d.status === "requested");
   const recentEvents = [...kase.timeline].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
 
@@ -93,21 +91,11 @@ export default function CaseOverviewPage({ params }: { params: Promise<{ id: str
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <CalendarClock className="h-4 w-4 text-primary" />
-                Deadlines to verify
+                Deadlines and dates
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {pendingDeadlines.length === 0 ? (
-                <p className="py-2 text-sm text-muted-foreground">No unverified deadlines.</p>
-              ) : (
-                pendingDeadlines.map((d) => (
-                  <DeadlineCard
-                    key={d.id}
-                    deadline={d}
-                    onToggleVerified={() => toggleDeadlineVerified(kase.id, d.id)}
-                  />
-                ))
-              )}
+            <CardContent>
+              <DeadlineList kase={kase} compact />
             </CardContent>
           </Card>
 

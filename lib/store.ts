@@ -148,7 +148,11 @@ interface BureauState {
   assignCase: (id: string, staffName: string | null) => void;
   addCaseAdminNote: (id: string, authorName: string, body: string) => void;
   saveIntakeProgress: (id: string, answers: Record<string, AnswerValue>, step: number) => Promise<void>;
-  completeIntake: (id: string) => Promise<void>;
+  completeIntake: (id: string) => Promise<{ ok: boolean; error?: string }>;
+  /** Reopen a completed intake so answers can be updated (plan recalculates on completion). */
+  reopenIntake: (id: string) => Promise<void>;
+  /** Record the real triggering date for a deadline; the server recalculates. */
+  setTriggerDate: (id: string, questionId: string, date: string) => Promise<{ ok: boolean; error?: string }>;
   regeneratePlan: (id: string) => void;
   toggleTask: (id: string, taskId: string) => void;
   addTask: (id: string, title: string) => void;
@@ -228,6 +232,32 @@ export const useBureauStore = create<BureauState>()((set, get) => {
     if (!data || !isLatest(`case:${id}`, seq)) return;
     replaceCase(data.case);
     mergeNotifications(data.notifications);
+  };
+
+  /** Server-authoritative case action that reports the server's error message. */
+  const caseActionResult = async (
+    id: string,
+    action: Record<string, unknown>,
+  ): Promise<{ ok: boolean; error?: string }> => {
+    const seq = nextSeq(`case:${id}`);
+    try {
+      const res = await fetch(`/api/cases/${id}/actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(action),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: typeof data.error === "string" ? data.error : "That didn't work. Try again." };
+      }
+      if (isLatest(`case:${id}`, seq)) {
+        replaceCase((data as CaseActionResponse).case);
+        mergeNotifications((data as CaseActionResponse).notifications);
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Network error — check your connection and try again." };
+    }
   };
 
   const ticketAction = async (id: string, action: Record<string, unknown>) => {
@@ -475,12 +505,17 @@ export const useBureauStore = create<BureauState>()((set, get) => {
       return caseAction(id, { type: "save_intake", answers, step });
     },
 
-    completeIntake: async (id) => {
-      // Server-authoritative: the rule engine runs on the server against the
-      // saved answers; the response carries the plan, tasks, documents, and
-      // deadlines. Await before navigating to the plan page.
-      await caseAction(id, { type: "complete_intake" });
+    // Server-authoritative: the rule engine runs on the server against the
+    // saved answers; the response carries the plan, tasks, documents, and
+    // deadlines. Await before navigating to the plan page.
+    completeIntake: (id) => caseActionResult(id, { type: "complete_intake" }),
+
+    reopenIntake: async (id) => {
+      await caseActionResult(id, { type: "reopen_intake" });
     },
+
+    setTriggerDate: (id, questionId, date) =>
+      caseActionResult(id, { type: "set_trigger_date", questionId, date }),
 
     regeneratePlan: (id) => {
       void caseAction(id, { type: "regenerate_plan" });

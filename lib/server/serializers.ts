@@ -5,6 +5,10 @@ import type {
   AnswerValue,
   Case,
   CaseStatus,
+  Deadline,
+  DeadlineKind,
+  DeadlineSource,
+  DeadlineTrigger,
   DisclaimerAcceptance,
   DocumentStatus,
   FileCategory,
@@ -26,6 +30,7 @@ import type {
   User,
 } from "@/lib/types";
 import { DEFAULT_NOTIFICATION_PREFS } from "@/lib/constants";
+import { dateOnlyFromStored, dateOnlyToUtcNoon } from "@/lib/dates";
 
 /**
  * Domain ⇄ database mapping.
@@ -107,6 +112,47 @@ function noteToDomain(n: DbCase["adminNotes"][number]): AdminNote {
   return { id: n.id, authorName: n.authorName, body: n.body, createdAt: iso(n.createdAt) };
 }
 
+function parseJsonOr<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+const DEADLINE_KINDS: readonly DeadlineKind[] = ["official", "self_reported", "suggested"];
+
+export function deadlineToDomain(d: DbCase["deadlines"][number]): Deadline {
+  return {
+    id: d.id,
+    key: d.key,
+    title: d.title,
+    // Rows written before deadline kinds existed were engine estimates:
+    // they surface as "suggested", never as official.
+    kind: DEADLINE_KINDS.includes(d.kind as DeadlineKind) ? (d.kind as DeadlineKind) : "suggested",
+    date: d.date ? dateOnlyFromStored(d.date) : null,
+    note: d.note ?? undefined,
+    verified: d.verified,
+    source: parseJsonOr<DeadlineSource | undefined>(d.sourceJson, undefined),
+    trigger: parseJsonOr<DeadlineTrigger | undefined>(d.triggerJson, undefined),
+  };
+}
+
+/** Column values for creating/updating a Deadline row from the domain shape. */
+export function deadlineToRow(d: Deadline) {
+  return {
+    key: d.key,
+    title: d.title,
+    kind: d.kind,
+    date: d.date ? dateOnlyToUtcNoon(d.date) : null,
+    note: d.note ?? null,
+    verified: d.verified,
+    sourceJson: d.source ? JSON.stringify(d.source) : null,
+    triggerJson: d.trigger ? JSON.stringify(d.trigger) : null,
+  };
+}
+
 export function caseToDomain(c: DbCase, opts: { includeAdminNotes: boolean }): Case {
   const answers: Record<string, AnswerValue> = {};
   for (const a of c.answers) {
@@ -156,13 +202,7 @@ export function caseToDomain(c: DbCase, opts: { includeAdminNotes: boolean }): C
       required: d.required,
       status: d.status as DocumentStatus,
     })),
-    deadlines: c.deadlines.map((d) => ({
-      id: d.id,
-      title: d.title,
-      date: iso(d.date),
-      note: d.note ?? undefined,
-      verified: d.verified,
-    })),
+    deadlines: c.deadlines.map(deadlineToDomain),
     letters: c.letters.map((l) => ({
       id: l.id,
       templateId: l.templateId,
@@ -332,13 +372,7 @@ export function caseToCreateData(c: Case): Prisma.CaseCreateInput {
       })),
     },
     deadlines: {
-      create: c.deadlines.map((d) => ({
-        id: d.id,
-        title: d.title,
-        date: new Date(d.date),
-        note: d.note ?? null,
-        verified: d.verified,
-      })),
+      create: c.deadlines.map((d) => ({ id: d.id, ...deadlineToRow(d) })),
     },
     letters: {
       create: c.letters.map((l) => ({

@@ -58,11 +58,12 @@ export function TaskChecklist({ tasks, onToggle, onAdd }: TaskChecklistProps) {
                 <p
                   className={cn(
                     "mt-1.5 flex items-center gap-1 text-xs",
-                    overdue ? "text-red-400" : "text-muted-foreground",
+                    overdue ? "text-amber-400" : "text-muted-foreground",
                   )}
+                  title="A suggested target to keep things moving — not a legal deadline."
                 >
                   <CalendarDays className="h-3 w-3" />
-                  {overdue ? "Was due" : "Due"} {formatDate(task.dueDate)}
+                  {overdue ? "Suggested target was" : "Suggested target"} {formatDate(task.dueDate)}
                 </p>
               )}
             </div>

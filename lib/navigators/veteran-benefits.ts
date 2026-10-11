@@ -1,5 +1,4 @@
 import type { NavigatorDef, PlanResult } from "@/lib/types";
-import { daysUntil } from "@/lib/utils";
 
 const veteranBenefits: NavigatorDef = {
   slug: "veteran-benefits",
@@ -10,6 +9,7 @@ const veteranBenefits: NavigatorDef = {
     "Organize your VA benefits journey: intake for the benefits you're pursuing, a claim preparation checklist, evidence tracker, appointment and document tracker, and a benefit category organizer.",
   icon: "medal",
   accent: "262 83% 66%",
+  launchStatus: "preview",
   problems: [
     "Not sure which VA benefits apply",
     "Disability claim evidence feels overwhelming",
@@ -224,7 +224,7 @@ ${ctx.senderName}`,
         { title: "Complete the evidence file per condition", detail: "For each condition: current diagnosis, in-service event or exposure, and a link between them. Buddy statements can fill gaps in service records." },
         { title: hasVso ? "File through your VSO" : "Engage a VSO before filing", detail: hasVso ? "Review the complete package with your VSO and file. Keep copies of every page submitted." : "An accredited VSO will strengthen and file the claim free of charge — worth the short wait to engage one." },
       ];
-      plan.deadlines.push({ title: "Intent to File — 1-year completion window", inDays: 365, note: "After submitting an ITF, the complete claim must follow within one year to keep the effective date." });
+      plan.deadlines.push({ kind: "official_unavailable", key: "itf-window", title: "Intent to File — completion window", note: "Not calculated: the window runs from the date VA receives your Intent to File, which BureauOS does not have. Use the date on your VA confirmation and verify the window with VA or your VSO." });
       if (!inTreatment) {
         plan.riskFlags.push({ label: "No current treatment", detail: "Claims need current diagnoses. If you're not in treatment for a claimed condition, get seen — VA health care or a private provider — before or right after filing.", severity: "warning" });
         plan.extraTasks.push({ title: "Get current medical documentation", description: "Schedule an exam for each claimed condition so there's a recent diagnosis on record.", category: "Evidence", dueInDays: 21 });
@@ -247,9 +247,9 @@ ${ctx.senderName}`,
         { title: "Pick the review lane with your VSO", detail: "New evidence available → Supplemental Claim. VA made an error on existing evidence → Higher-Level Review. Complex disputes → Board Appeal." },
       ];
       if (typeof a.decision_date === "string" && a.decision_date) {
-        plan.deadlines.push({ title: "Decision review deadline (1 year from decision)", inDays: daysUntil(a.decision_date) + 365, note: `Decision dated ${a.decision_date}. The review request is generally due one year from that date — verify on the letter.` });
+        plan.deadlines.push({ kind: "official_unavailable", key: "decision-review", title: "Decision review deadline", note: `Not calculated: BureauOS has no verified rule for this navigator yet. You entered a decision date of ${a.decision_date}; the review deadline is stated on the decision letter — verify it there or with your VSO.` });
       } else {
-        plan.deadlines.push({ title: "Find the decision letter date", inDays: 5, note: "The one-year review clock runs from the date on the decision letter." });
+        plan.deadlines.push({ kind: "official_unavailable", key: "decision-review", title: "Decision review deadline", note: "Not established: find the date on your decision letter. The review deadline is stated there." });
       }
       plan.riskFlags.push({ label: "Review window", detail: "Missing the one-year window doesn't end everything (Supplemental Claims can reopen later) but usually costs the earlier effective date — real money.", severity: "critical" });
       plan.extraDocuments.push({ name: "VA decision letter (all pages)", required: true }, { name: "C-file (claims file) request", required: false, description: "Request via VA.gov or FOIA — shows exactly what the rater saw." });
