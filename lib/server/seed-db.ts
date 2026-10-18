@@ -140,15 +140,6 @@ export async function seedDatabase(prisma: PrismaClient): Promise<{ seeded: bool
     },
   });
 
-  const files = [
-    tenant && { caseId: tenant.id, name: "ceiling-leak-photo-1.jpg", fileType: "image/jpeg", sizeLabel: "2.1 MB", category: "repair_photos", status: "verified", notes: "Water stain, bathroom ceiling — dated in frame.", uploadedAt: new Date(daysFromNow(-9)) },
-    tenant && { caseId: tenant.id, name: "lease-2025-signed.pdf", fileType: "application/pdf", sizeLabel: "840 KB", category: "lease_documents", status: "verified", notes: "", uploadedAt: new Date(daysFromNow(-9)) },
-    insurance && { caseId: insurance.id, name: "meridian-denial-letter.pdf", fileType: "application/pdf", sizeLabel: "312 KB", category: "insurance_denial_letters", status: "pending_review", notes: "Full EOB, 3 pages.", uploadedAt: new Date(daysFromNow(-6)) },
-  ].filter((f): f is NonNullable<typeof f> => Boolean(f));
-  await prisma.uploadedFile.createMany({
-    data: files.map((f) => ({ ...f, userId: customer.id })),
-  });
-
   await prisma.notificationEvent.createMany({
     data: [
       { userId: customer.id, type: "welcome", channel: "email", subject: "Welcome to BureauOS", body: "Your account is set up. Start a case any time — your dashboard keeps everything organized.", status: "mock_sent" },

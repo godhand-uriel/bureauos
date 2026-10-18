@@ -443,6 +443,7 @@ export type NotificationEventType =
   | "support_update"
   | "review_update"
   | "billing_update"
+  | "account_security"
   | "welcome";
 
 export interface NotificationEvent {

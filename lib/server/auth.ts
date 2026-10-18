@@ -4,12 +4,14 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/server/db";
 
 /**
- * Session resolution for API routes — Phase 2: Auth.js (NextAuth v5).
+ * Session resolution for API routes (Auth.js / NextAuth v5).
  *
  * The middleware already verified the JWT; here we re-resolve the user from
  * the database on every request so authorization decisions (role, ownership)
- * always reflect current state, never a stale token. Deleting a user
- * invalidates their access immediately even if their JWT hasn't expired.
+ * always reflect current state, never a stale token:
+ *  - a deleted account loses access immediately, even with an unexpired JWT
+ *  - a token issued before the account's last password change is rejected
+ *    (User.sessionVersion), so changing a password signs out every device
  */
 
 export type SessionUser = DbUser & { notificationPrefs: NotificationPreference | null };
@@ -18,10 +20,13 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return null;
-  return prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
     include: { notificationPrefs: true },
   });
+  if (!user) return null;
+  if ((session.user.sessionVersion ?? 0) !== user.sessionVersion) return null;
+  return user;
 }
 
 /* ------------------------- route guard helpers ------------------------- */

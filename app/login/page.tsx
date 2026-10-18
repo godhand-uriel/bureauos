@@ -33,7 +33,13 @@ export default function LoginPage() {
   // Carried to the signup link after mount (reading it during render would
   // mismatch the server-rendered markup).
   const [query, setQuery] = useState("");
-  useEffect(() => setQuery(window.location.search), []);
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    setQuery(window.location.search);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("changed") === "1") setNotice("Password changed. Sign in with your new password.");
+    if (params.get("reset") === "1") setNotice("Password reset. Sign in with your new password.");
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +69,12 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Pick up your cases where you left off.
           </p>
+
+          {notice && (
+            <p role="status" className="mt-4 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+              {notice}
+            </p>
+          )}
 
           <form onSubmit={submit} className="mt-6 space-y-4">
             <div className="space-y-1.5">

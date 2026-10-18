@@ -12,7 +12,6 @@ import type {
   DisclaimerAcceptance,
   DocumentStatus,
   Entitlement,
-  FileCategory,
   GeneratedLetter,
   NavigatorSlug,
   NotificationEvent,
@@ -25,7 +24,6 @@ import type {
   TicketCategory,
   TicketStatus,
   TimelineEventType,
-  UploadedFile,
   User,
   UserRole,
 } from "@/lib/types";
@@ -102,7 +100,6 @@ interface BootstrapResponse {
   cases: Case[];
   tickets: SupportTicket[];
   reviews: ReviewRequest[];
-  files: UploadedFile[];
   entitlements: Entitlement[];
   purchases: Purchase[];
   acceptances: DisclaimerAcceptance[];
@@ -124,7 +121,6 @@ interface BureauState {
   purchases: Purchase[];
   tickets: SupportTicket[];
   reviews: ReviewRequest[];
-  files: UploadedFile[];
   acceptances: DisclaimerAcceptance[];
   notifications: NotificationEvent[];
   /** Staff-only audit trail (empty for customer sessions). */
@@ -137,12 +133,20 @@ interface BureauState {
   bootstrap: () => Promise<void>;
   refresh: () => Promise<void>;
 
-  // Auth (demo-grade sessions; enforced server-side)
+  // Auth (Auth.js sessions; enforced server-side)
   signUp: (name: string, email: string, password: string, usState: string) => Promise<{ ok: boolean; error?: string }>;
   logIn: (email: string, password: string, totp?: string) => Promise<{ ok: boolean; error?: string }>;
   logInDemo: (role: UserRole) => Promise<void>;
   logOut: () => Promise<void>;
-  updateProfile: (partial: Partial<Pick<User, "name" | "email" | "usState" | "phone">>) => void;
+  // Save profile fields. Changing the sign-in email requires the current password.
+  saveProfile: (
+    partial: Partial<Pick<User, "name" | "email" | "usState">>,
+    currentPassword?: string,
+  ) => Promise<ActionOutcome>;
+  // Change the password. Every session (this one included) is signed out on success.
+  changePassword: (currentPassword: string, newPassword: string) => Promise<ActionOutcome>;
+  // Permanently delete the account and its data. Signs out on success.
+  deleteAccount: (password: string) => Promise<ActionOutcome>;
   updateNotificationPrefs: (partial: Partial<NotificationPreferences>) => void;
 
   // Legal
@@ -189,11 +193,6 @@ interface BureauState {
   updateLetter: (id: string, letterId: string, body: string) => void;
   deleteLetter: (id: string, letterId: string) => void;
 
-  // Files (metadata only in Phase 1)
-  addFile: (caseId: string, meta: { name: string; fileType: string; sizeLabel: string; category: FileCategory; notes: string }) => void;
-  setFileStatus: (fileId: string, status: UploadedFile["status"], notes?: string) => void;
-  deleteFile: (fileId: string) => void;
-
   // Support
   createTicket: (input: { caseId: string | null; category: TicketCategory; subject: string; body: string }) => Promise<SupportTicket | null>;
   addTicketMessage: (ticketId: string, authorRole: "customer" | "staff", authorName: string, body: string) => void;
@@ -205,6 +204,7 @@ interface BureauState {
   setReviewStatus: (reviewId: string, status: ReviewStatus) => void;
   addReviewerNote: (reviewId: string, authorName: string, body: string) => void;
 
+  // Development only (the route is 404 in production).
   resetAllData: (reseed: boolean) => Promise<void>;
 }
 
@@ -216,7 +216,6 @@ const EMPTY_DATA = {
   purchases: [] as Purchase[],
   tickets: [] as SupportTicket[],
   reviews: [] as ReviewRequest[],
-  files: [] as UploadedFile[],
   acceptances: [] as DisclaimerAcceptance[],
   notifications: [] as NotificationEvent[],
   auditLog: [] as AuditEntry[],
@@ -395,22 +394,68 @@ export const useBureauStore = create<BureauState>()((set, get) => {
       set({ ...EMPTY_DATA, hasHydrated: true });
     },
 
-    updateProfile: (partial) => {
-      const user = me();
-      if (!user) return;
-      set({
-        users: get().users.map((u) =>
-          u.id === user.id
-            ? { ...u, ...partial, email: partial.email ? partial.email.toLowerCase() : u.email }
-            : u,
-        ),
-      });
-      void (async () => {
-        const seq = nextSeq("me");
-        const data = await apiFetch<{ user: User }>("/api/me", "PATCH", partial);
-        if (!data || !isLatest("me", seq)) return;
-        set({ users: get().users.map((u) => (u.id === data.user.id ? data.user : u)) });
-      })();
+    saveProfile: async (partial, currentPassword) => {
+      try {
+        const res = await fetch("/api/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...partial, ...(currentPassword ? { currentPassword } : {}) }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          return { ok: false, error: typeof data.error === "string" ? data.error : "Couldn't save. Check the fields and try again." };
+        }
+        const saved = (data as { user: User }).user;
+        set({ users: get().users.map((u) => (u.id === saved.id ? saved : u)) });
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "Network error — check your connection and try again." };
+      }
+    },
+
+    changePassword: async (currentPassword, newPassword) => {
+      try {
+        const res = await fetch("/api/me/password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ currentPassword, newPassword }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          return {
+            ok: false,
+            error:
+              typeof data.error === "string" && data.error !== "Invalid request."
+                ? data.error
+                : "Couldn't change the password. New passwords need at least 10 characters.",
+          };
+        }
+        // The server invalidated every session for this account, this one included.
+        await authSignOut({ redirect: false });
+        set({ ...EMPTY_DATA, hasHydrated: true });
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "Network error — check your connection and try again." };
+      }
+    },
+
+    deleteAccount: async (password) => {
+      try {
+        const res = await fetch("/api/me", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password, confirm: "DELETE" }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          return { ok: false, error: typeof data.error === "string" ? data.error : "Couldn't delete the account." };
+        }
+        await authSignOut({ redirect: false });
+        set({ ...EMPTY_DATA, hasHydrated: true });
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "Network error — check your connection and try again." };
+      }
     },
 
     updateNotificationPrefs: (partial) => {
@@ -515,7 +560,6 @@ export const useBureauStore = create<BureauState>()((set, get) => {
       set({
         cases: get().cases.filter((c) => c.id !== id),
         entitlements: get().entitlements.filter((e) => e.caseId !== id),
-        files: get().files.filter((f) => f.caseId !== id),
         reviews: get().reviews.filter((r) => r.caseId !== id),
       });
       void apiFetch(`/api/cases/${id}`, "DELETE");
@@ -665,56 +709,6 @@ export const useBureauStore = create<BureauState>()((set, get) => {
     deleteLetter: (id, letterId) => {
       mapCase(id, (c) => touch({ ...c, letters: c.letters.filter((l) => l.id !== letterId) }));
       void caseAction(id, { type: "delete_letter", letterId });
-    },
-
-    /* ---------------------------- Files --------------------------- */
-
-    addFile: (caseId, meta) => {
-      const user = me();
-      const kase = get().cases.find((c) => c.id === caseId);
-      if (!user || !kase) return;
-      const fileId = uid();
-      set({
-        files: [
-          { id: fileId, caseId, userId: kase.userId, uploadedAt: new Date().toISOString(), status: "pending_review", ...meta },
-          ...get().files,
-        ],
-      });
-      void (async () => {
-        const data = await apiFetch<{ file: UploadedFile; case: Case; notifications: NotificationEvent[] }>(
-          "/api/files",
-          "POST",
-          { id: fileId, caseId, ...meta },
-        );
-        if (!data) return;
-        set({ files: get().files.map((f) => (f.id === data.file.id ? data.file : f)) });
-        replaceCase(data.case);
-        mergeNotifications(data.notifications);
-      })();
-    },
-
-    setFileStatus: (fileId, status, notes) => {
-      set({
-        files: get().files.map((f) =>
-          f.id === fileId ? { ...f, status, notes: notes !== undefined ? notes : f.notes } : f,
-        ),
-      });
-      void (async () => {
-        const seq = nextSeq(`file:${fileId}`);
-        const data = await apiFetch<{ file: UploadedFile; notifications: NotificationEvent[] }>(
-          `/api/files/${fileId}`,
-          "PATCH",
-          { status, ...(notes !== undefined && { notes }) },
-        );
-        if (!data || !isLatest(`file:${fileId}`, seq)) return;
-        set({ files: get().files.map((f) => (f.id === data.file.id ? data.file : f)) });
-        mergeNotifications(data.notifications);
-      })();
-    },
-
-    deleteFile: (fileId) => {
-      set({ files: get().files.filter((f) => f.id !== fileId) });
-      void apiFetch(`/api/files/${fileId}`, "DELETE");
     },
 
     /* --------------------------- Support -------------------------- */

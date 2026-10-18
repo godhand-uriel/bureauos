@@ -28,7 +28,8 @@ import { GET as bootstrapGET } from "@/app/api/bootstrap/route";
 import { POST as ticketsPOST } from "@/app/api/tickets/route";
 import { POST as ticketActionPOST } from "@/app/api/tickets/[id]/actions/route";
 import { POST as reviewsPOST } from "@/app/api/reviews/route";
-import { PATCH as filePATCH } from "@/app/api/files/[id]/route";
+import { POST as filesPOST } from "@/app/api/files/route";
+import { PATCH as filePATCH, DELETE as fileDELETE } from "@/app/api/files/[id]/route";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let customer: any;
@@ -218,15 +219,33 @@ describe("POST /api/reviews enforcement", () => {
   });
 });
 
-describe("PATCH /api/files RBAC", () => {
-  it("rejects customer verification attempts (403) and allows staff (audited)", async () => {
-    const file = await prisma.uploadedFile.findFirstOrThrow({ where: { userId: customer.id } });
+describe("file uploads are disabled", () => {
+  it("the demo seed creates no file records", async () => {
+    expect(await prisma.uploadedFile.count()).toBe(0);
+  });
+
+  it("refuses new uploads and file review for everyone (410) and stores nothing", async () => {
+    for (const user of [customer, admin]) {
+      currentUser = user;
+      expect((await filesPOST()).status).toBe(410);
+      expect((await filePATCH()).status).toBe(410);
+    }
+    expect(await prisma.uploadedFile.count()).toBe(0);
+  });
+
+  it("legacy file-metadata rows stay deletable by their owner only", async () => {
+    const ownCase = await prisma.case.findFirstOrThrow({ where: { userId: customer.id } });
+    const legacy = await prisma.uploadedFile.create({
+      data: {
+        caseId: ownCase.id, userId: customer.id, name: "old-record.pdf", fileType: "application/pdf",
+        sizeLabel: "10 KB", category: "correspondence",
+      },
+    });
+    const del = () => new Request("http://localhost/api/files/x", { method: "DELETE" });
+    currentUser = stranger;
+    expect((await fileDELETE(del(), params(legacy.id))).status).toBe(404);
     currentUser = customer;
-    expect((await filePATCH(jsonRequest({ status: "verified" }), params(file.id))).status).toBe(403);
-    currentUser = admin;
-    const res = await filePATCH(jsonRequest({ status: "verified" }), params(file.id));
-    expect(res.status).toBe(200);
-    const audit = await prisma.auditLog.findFirst({ where: { action: "file.set_status", targetId: file.id } });
-    expect(audit).not.toBeNull();
+    expect((await fileDELETE(del(), params(legacy.id))).status).toBe(200);
+    expect(await prisma.uploadedFile.count({ where: { id: legacy.id } })).toBe(0);
   });
 });

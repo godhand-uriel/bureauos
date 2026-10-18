@@ -32,5 +32,6 @@ export const NOTIFICATION_TYPE_TO_PREF: Record<
   support_update: "supportTicketUpdates",
   review_update: "caseStatusAlerts",
   billing_update: null,
+  account_security: null,
   welcome: null,
 };

@@ -2,7 +2,7 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileQuestion, NotebookPen, Paperclip, Send } from "lucide-react";
+import { ArrowLeft, FileQuestion, NotebookPen, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
@@ -10,8 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/empty-state";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
-import { FileStatusBadge, ReviewStatusBadge, TierBadge } from "@/components/platform-badges";
-import { fileCategoryLabel } from "@/components/file-upload-panel";
+import { ReviewStatusBadge, TierBadge } from "@/components/platform-badges";
 import { Timeline } from "@/components/timeline";
 import { CasePassAdminCard } from "@/components/case-pass-admin-card";
 import { getNavigator } from "@/lib/navigators";
@@ -29,13 +28,11 @@ export default function AdminCasePage({ params }: { params: Promise<{ id: string
   const admin = useCurrentUser();
   const kase = useBureauStore((s) => s.cases.find((c) => c.id === id));
   const users = useBureauStore((s) => s.users);
-  const allFiles = useBureauStore((s) => s.files);
-  const files = allFiles.filter((f) => f.caseId === id);
+
   const review = useBureauStore((s) => s.reviews.find((r) => r.caseId === id));
   const setCaseStatus = useBureauStore((s) => s.setCaseStatus);
   const assignCase = useBureauStore((s) => s.assignCase);
   const addCaseAdminNote = useBureauStore((s) => s.addCaseAdminNote);
-  const setFileStatus = useBureauStore((s) => s.setFileStatus);
   const [note, setNote] = useState("");
 
   if (!hydrated || !admin) return null;
@@ -191,42 +188,6 @@ export default function AdminCasePage({ params }: { params: Promise<{ id: string
             </CardContent>
           </Card>
 
-          {/* Files to verify */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Paperclip className="h-4 w-4 text-primary" />
-                Uploaded files ({files.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {files.length === 0 ? (
-                <p className="py-2 text-sm text-muted-foreground">No files on this case.</p>
-              ) : (
-                files.map((f) => (
-                  <div key={f.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card/50 p-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{f.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {fileCategoryLabel(f.category)} · {f.sizeLabel} · {formatDate(f.uploadedAt)}
-                      </p>
-                    </div>
-                    <FileStatusBadge status={f.status} />
-                    <Select
-                      value={f.status}
-                      onChange={(e) => setFileStatus(f.id, e.target.value as typeof f.status)}
-                      aria-label={`Set status for ${f.name}`}
-                      className="h-8 w-36 text-xs"
-                    >
-                      {["uploaded", "pending_review", "verified", "rejected"].map((s) => (
-                        <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
-                      ))}
-                    </Select>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
         </div>
 
         <div className="space-y-6">

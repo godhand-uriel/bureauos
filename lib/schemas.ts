@@ -198,6 +198,19 @@ export const profileUpdateSchema = z.object({
   email: z.string().trim().email().max(200).optional(),
   usState: z.string().trim().max(60).optional(),
   phone: z.string().trim().max(40).optional(),
+  /** Required only when `email` changes the sign-in address. */
+  currentPassword: z.string().min(1).max(200).optional(),
+});
+
+export const changePasswordInputSchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(10).max(200),
+});
+
+export const deleteAccountInputSchema = z.object({
+  password: z.string().min(1).max(200),
+  /** The user types DELETE — a deliberate act, not a stray click. */
+  confirm: z.literal("DELETE"),
 });
 
 export const prefsUpdateSchema = notificationPreferencesSchema.partial();
@@ -305,21 +318,6 @@ export const reviewActionSchema = z.discriminatedUnion("type", [
 ]);
 
 export type ReviewActionInput = z.infer<typeof reviewActionSchema>;
-
-export const createFileInputSchema = z.object({
-  id: clientId.optional(),
-  caseId: z.string().max(64),
-  name: z.string().trim().min(1).max(300),
-  fileType: z.string().max(150),
-  sizeLabel: z.string().max(40),
-  category: uploadedFileSchema.shape.category,
-  notes: z.string().max(1_000).default(""),
-});
-
-export const fileUpdateInputSchema = z.object({
-  status: uploadedFileSchema.shape.status,
-  notes: z.string().max(1_000).optional(),
-});
 
 export const devResetInputSchema = z.object({
   reseed: z.boolean(),

@@ -173,6 +173,33 @@ export async function createCasePassCheckout(
   return { ok: true, url: session.url, purchaseId: purchase.id };
 }
 
+/**
+ * Close open Checkout sessions before a case or account is deleted, so a
+ * payment can't complete for something that no longer exists. Best effort on
+ * the Stripe side: if a session can't be expired (already paid, or Stripe is
+ * unreachable) the webhook still records the payment, and fulfilment logs it
+ * for refund because there is no case left to entitle.
+ */
+export async function cancelPendingCheckouts(where: { userId: string } | { caseId: string }): Promise<void> {
+  const pending = await prisma.purchase.findMany({ where: { ...where, status: "pending" } });
+  if (pending.length === 0) return;
+  if (stripeMode() !== "off") {
+    const stripe = getStripe();
+    for (const p of pending) {
+      if (!p.stripeCheckoutSessionId) continue;
+      try {
+        await stripe.checkout.sessions.expire(p.stripeCheckoutSessionId);
+      } catch {
+        // See above — settled by the webhook if it was already paid.
+      }
+    }
+  }
+  await prisma.purchase.updateMany({
+    where: { id: { in: pending.map((p) => p.id) }, status: "pending" },
+    data: { status: "expired" },
+  });
+}
+
 /* ------------------------------- webhooks ------------------------------ */
 
 export type EventOutcome = "processed" | "duplicate" | "ignored";

@@ -1,46 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/server/db";
-import { badRequest, forbidden, getSessionUser, notFound, unauthorized } from "@/lib/server/auth";
-import { fileToDomain } from "@/lib/server/serializers";
-import { writeAudit } from "@/lib/server/audit";
-import { queueNotification } from "@/lib/server/notify";
-import { fileUpdateInputSchema } from "@/lib/schemas";
-import type { NotificationEvent } from "@/lib/types";
+import { getSessionUser, notFound, unauthorized } from "@/lib/server/auth";
 
-/** Verification status updates — staff only. */
-export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const user = await getSessionUser();
-  if (!user) return unauthorized();
-  if (user.role !== "admin") return forbidden("Staff only.");
-  const { id } = await ctx.params;
-
-  const parsed = fileUpdateInputSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return badRequest(parsed.error.flatten());
-
-  const file = await prisma.uploadedFile.findUnique({ where: { id } });
-  if (!file) return notFound("File not found.");
-
-  const updated = await prisma.uploadedFile.update({
-    where: { id },
-    data: { status: parsed.data.status, ...(parsed.data.notes !== undefined && { notes: parsed.data.notes }) },
-  });
-  await writeAudit(user, "file.set_status", "file", id, `${file.status} → ${parsed.data.status}`, file.caseId);
-
-  const notifications: NotificationEvent[] = [];
-  if (parsed.data.status === "rejected") {
-    notifications.push(
-      ...(await queueNotification(
-        file.userId,
-        "missing_document",
-        `Action needed: ${file.name}`,
-        "A file on your case needs to be re-uploaded or replaced. Check the document checklist.",
-      )),
-    );
-  }
-  return NextResponse.json({ file: fileToDomain(updated), notifications });
+/** File review is gone with uploads (see ../route.ts). */
+export async function PATCH() {
+  return NextResponse.json({ error: "File uploads are not available." }, { status: 410 });
 }
 
-/** Remove file metadata — owner or staff. */
+/**
+ * Remove a legacy file-metadata row (name/size recorded by an earlier
+ * version; no file content was ever stored). Owner or staff. Kept so those
+ * rows stay deletable individually — they also go with their case or account.
+ */
 export async function DELETE(_request: Request, ctx: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser();
   if (!user) return unauthorized();

@@ -24,6 +24,9 @@ export const authConfig = {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role ?? "customer";
+        // The account's session version at sign-in. A password change bumps
+        // the stored value, which invalidates every token carrying an older one.
+        token.sv = (user as { sessionVersion?: number }).sessionVersion ?? 0;
       }
       return token;
     },
@@ -31,6 +34,7 @@ export const authConfig = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = (token.role as "customer" | "admin") ?? "customer";
+        session.user.sessionVersion = typeof token.sv === "number" ? token.sv : 0;
       }
       return session;
     },
