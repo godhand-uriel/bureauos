@@ -1,0 +1,367 @@
+// GENERATED FILE — DO NOT EDIT.
+// Source of truth: prisma/schema.prisma. Regenerate with `npm run db:sync`.
+// This is the PostgreSQL (production) variant of the BureauOS data model;
+// its migrations live in prisma/postgres/migrations.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  // Scrypt hash backing the Auth.js credentials provider.
+  passwordHash String   @default("")
+  role         String   @default("customer") // "customer" | "admin"
+  // Staff MFA (RFC 6238 TOTP). Required for admin sign-in in production.
+  mfaSecret    String   @default("") // base32; set during enrollment
+  mfaEnabled   Boolean  @default(false)
+  // Bumped on password change/reset; sessions issued for an older value are
+  // rejected (lib/server/auth.ts), so a stolen session dies with the password.
+  sessionVersion Int    @default(0)
+  usState      String   @default("")
+  phone        String   @default("")
+  createdAt    DateTime @default(now())
+
+  notificationPrefs NotificationPreference?
+  cases             Case[]
+  tickets           SupportTicket[]
+  reviews           ReviewRequest[]
+  files             UploadedFile[]
+  acceptances       DisclaimerAcceptance[]
+  notifications     NotificationEvent[]
+  purchases         Purchase[]
+  entitlements      Entitlement[]
+}
+
+// A one-time purchase attempt, created server-side before redirecting to
+// Stripe Checkout. Status moves ONLY in response to verified Stripe webhook
+// events (lib/server/payments.ts) — never from a browser redirect.
+// Financial record: survives account/case deletion with the links nulled.
+model Purchase {
+  id                      String        @id @default(cuid())
+  user                    User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId                  String?
+  case                    Case?         @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  caseId                  String?
+  product                 String // product key, e.g. "case_pass" (lib/server/commerce.ts)
+  amountCents             Int
+  currency                String        @default("usd")
+  status                  String        @default("pending") // PurchaseStatus values
+  livemode                Boolean       @default(false)
+  stripeCheckoutSessionId String?       @unique
+  stripePaymentIntentId   String?       @unique
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  entitlements            Entitlement[]
+
+  @@index([userId])
+  @@index([caseId])
+}
+
+// What a customer is entitled to on one case. Rows are written only by the
+// payment fulfilment path or an audited staff grant — there is no customer-
+// callable API that creates or activates one.
+model Entitlement {
+  id           String    @id @default(cuid())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  case         Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId       String
+  product      String // "case_pass"
+  status       String    @default("active") // "active" | "revoked"
+  source       String // "stripe" | "staff_grant" | "dev_simulation"
+  purchase     Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  purchaseId   String?
+  grantedAt    DateTime  @default(now())
+  revokedAt    DateTime?
+  revokeReason String?
+
+  @@unique([caseId, product])
+  @@index([userId])
+}
+
+// Processed Stripe webhook events — the idempotency ledger. An event id is
+// inserted in the same transaction that applies its effects.
+model StripeEvent {
+  id          String   @id // Stripe event id (evt_…)
+  type        String
+  livemode    Boolean
+  processedAt DateTime @default(now())
+}
+
+model NotificationPreference {
+  id                       String  @id @default(cuid())
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                   String  @unique
+  emailReminders           Boolean @default(true)
+  smsReminders             Boolean @default(false)
+  deadlineAlerts           Boolean @default(true)
+  caseStatusAlerts         Boolean @default(true)
+  missingDocumentReminders Boolean @default(true)
+  supportTicketUpdates     Boolean @default(true)
+}
+
+model Case {
+  id            String   @id @default(cuid())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  navigatorSlug String // content-defined navigator (lib/navigators)
+  title         String
+  status        String   @default("intake") // CaseStatus values
+  priority      String   @default("medium") // Priority values
+  serviceTier   String   @default("self_service") // ServiceTierId values
+  assignedTo    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  intakeCompleted Boolean @default(false)
+  intakeStep      Int     @default(0)
+
+  answers    IntakeAnswer[]
+  plan       ActionPlan?
+  tasks      Task[]
+  documents  DocumentRequirement[]
+  deadlines  Deadline[]
+  letters    GeneratedLetter[]
+  timeline   TimelineEvent[]
+  files      UploadedFile[]
+  adminNotes AdminNote[]
+  reviews    ReviewRequest[]
+  tickets    SupportTicket[]
+  purchases    Purchase[]
+  entitlements Entitlement[]
+
+  @@index([userId])
+}
+
+model IntakeAnswer {
+  id         String @id @default(cuid())
+  case       Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId     String
+  questionId String // question ids defined in navigator content
+  valueJson  String // serialized AnswerValue
+
+  @@unique([caseId, questionId])
+}
+
+model ActionPlan {
+  id                        String   @id @default(cuid())
+  case                      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId                    String   @unique
+  generatedAt               DateTime @default(now())
+  situationSummary          String
+  priority                  String // Priority values
+  nextActionsJson           String // serialized {title, detail}[]
+  riskFlagsJson             String // serialized RiskFlag[]
+  suggestedLetterTemplateId String?
+  disclaimer                String
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId      String
+  title       String
+  description String?
+  category    String?
+  done        Boolean   @default(false)
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([caseId])
+}
+
+model DocumentRequirement {
+  id          String  @id @default(cuid())
+  case        Case    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId      String
+  name        String
+  description String?
+  required    Boolean @default(false)
+  status      String  @default("needed") // DocumentStatus values
+
+  @@index([caseId])
+}
+
+// kind: "official" | "self_reported" | "suggested" (lib/types.ts → DeadlineKind).
+// An official deadline has a date ONLY when a source-checked rule was applied
+// to the real triggering event; otherwise date is NULL (NEEDS VERIFICATION).
+model Deadline {
+  id          String    @id @default(cuid())
+  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId      String
+  key         String    @default("") // stable identity across plan regenerations
+  title       String
+  kind        String    @default("suggested")
+  date        DateTime? // calendar date stored at 12:00 UTC; NULL = not established
+  note        String?
+  verified    Boolean   @default(false)
+  sourceJson  String? // serialized DeadlineSource (rule citation, URL, check date)
+  triggerJson String? // serialized DeadlineTrigger (what the date was counted from)
+
+  @@index([caseId])
+}
+
+model GeneratedLetter {
+  id         String   @id @default(cuid())
+  case       Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId     String
+  templateId String
+  title      String
+  body       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([caseId])
+}
+
+model TimelineEvent {
+  id     String   @id @default(cuid())
+  case   Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId String
+  type   String // TimelineEventType values
+  title  String
+  detail String?
+  date   DateTime @default(now())
+
+  @@index([caseId])
+}
+
+// FROZEN: file uploads are disabled for launch (POST /api/files returns 410).
+// BureauOS never stored file bytes — rows here are name/type/size metadata
+// recorded by earlier versions. The table is kept so those rows remain
+// exportable and deletable; nothing writes new ones.
+model UploadedFile {
+  id         String   @id @default(cuid())
+  case       Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  name       String
+  fileType   String
+  sizeLabel  String // human-readable
+  category   String // FileCategory values
+  storageKey String   @default("") // reserved for object-storage keys
+  status     String   @default("pending_review") // FileStatus values
+  notes      String   @default("")
+  uploadedAt DateTime @default(now())
+
+  @@index([caseId])
+}
+
+// Polymorphic staff note: exactly one of caseId / ticketId / reviewId is set.
+// Case + ticket notes are staff-only; review notes are customer-visible.
+model AdminNote {
+  id         String         @id @default(cuid())
+  case       Case?          @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId     String?
+  ticket     SupportTicket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId   String?
+  review     ReviewRequest? @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reviewId   String?
+  authorName String
+  body       String
+  createdAt  DateTime       @default(now())
+
+  @@index([caseId])
+  @@index([ticketId])
+  @@index([reviewId])
+}
+
+model SupportTicket {
+  id            String          @id @default(cuid())
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  case          Case?           @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  caseId        String?
+  category      String // TicketCategory values
+  subject       String
+  status        String          @default("open") // TicketStatus values
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  messages      TicketMessage[]
+  internalNotes AdminNote[]
+
+  @@index([userId])
+}
+
+model TicketMessage {
+  id         String        @id @default(cuid())
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId   String
+  authorRole String // "customer" | "staff"
+  authorName String
+  body       String
+  createdAt  DateTime      @default(now())
+
+  @@index([ticketId])
+}
+
+model ReviewRequest {
+  id            String      @id @default(cuid())
+  case          Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId        String      @unique
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  status        String      @default("requested") // ReviewStatus values
+  customerNotes String
+  requestedAt   DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  reviewerNotes AdminNote[]
+
+  @@index([userId])
+}
+
+model DisclaimerAcceptance {
+  id                 String   @id @default(cuid())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  caseId             String?
+  version            String
+  acceptedTerms      Boolean
+  acceptedPrivacy    Boolean
+  acceptedDisclaimer Boolean
+  acceptedAt         DateTime @default(now())
+
+  @@index([userId, caseId, version])
+}
+
+// Append-only record of staff actions (status changes, assignments, notes,
+// review decisions, file verification, resets). Written server-side only;
+// exposed read-only to admin sessions. Never updated or deleted by the app.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actorName  String
+  actorRole  String // "customer" | "admin" — staff actions are the priority
+  action     String // e.g. "case.set_status", "review.set_status", "file.verify"
+  targetType String // "case" | "ticket" | "review" | "file" | "system"
+  targetId   String
+  caseId     String? // denormalized for per-case audit trails
+  detail     String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([caseId])
+}
+
+model NotificationEvent {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  type      String // NotificationEventType values
+  channel   String // "email" | "sms"
+  subject   String
+  body      String
+  status    String   @default("mock_sent") // queued | mock_sent (no real delivery in Phase 1)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}

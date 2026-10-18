@@ -4,18 +4,20 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/prisma-env.mjs generate && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "db:migrate": "prisma migrate deploy",
+    "db:migrate": "node scripts/prisma-env.mjs migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:migration:new": "node scripts/new-migration.mjs",
-    "db:generate": "prisma generate",
+    "db:generate": "node scripts/prisma-env.mjs generate",
+    "db:sync": "node scripts/sync-postgres-schema.mjs",
     "db:seed": "tsx prisma/seed.ts",
     "admin:provision": "tsx scripts/provision-admin.ts",
-    "postinstall": "prisma generate"
+    "retention": "tsx scripts/retention.ts",
+    "postinstall": "node scripts/prisma-env.mjs generate"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
