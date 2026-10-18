@@ -99,8 +99,8 @@ export default function NotificationSettingsPage() {
             Email
           </CardTitle>
           <CardDescription>
-            Account and payment emails (password changes, receipts, refunds) are always sent. Text
-            messages (SMS) are not offered.
+            Account and payment emails (password changes, receipts, refunds) don&apos;t depend on the
+            choices below. Text messages (SMS) are not offered.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">

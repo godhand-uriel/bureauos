@@ -1,75 +1,138 @@
-# BureauOS Production Readiness
+# BureauOS — Production Readiness (Job Separation launch)
 
-Date: 2026-07-11 (post Phase 3 operations hardening)
+Updated: 2026-10-18 · Branch `launch/job-separation-pilot`
 
-**BureauOS is NOT production-ready.** This document is the honest ledger of
-what is real, what is demo-grade, and what must happen before real customers
-or real PII touch the system.
+**Status: NOT cleared for real paying customers.** The engineering work in this
+repository is complete and verified. Launch is blocked on owner-side items that
+no code change can supply: a Stripe account and an end-to-end live-mode test,
+hosted PostgreSQL with backups, an email provider, production secrets and staff
+accounts, and attorney review of the deadline rules and legal pages. Each is
+listed with its exact action in [Launch blockers](#launch-blockers).
 
-## Current state by layer
+`docs/bureauos_mvp_audit.md` (July 2026) and `docs/backend_migration_plan.md` are
+historical. Their findings were revalidated against current code, and this
+document supersedes them.
 
-| Layer | State | Production-ready? |
-|---|---|---|
-| Persistence | Prisma + SQLite behind API routes; server is source of truth | Partially — needs Postgres, backups, migrations discipline |
-| Authorization | Server-side owner scoping + role checks on every route; staff-only fields stripped from customer responses; middleware role gate on /admin | Yes for current scope — locked in by the 23-test integration suite (`npm test`) |
-| Audit logging | Append-only `AuditLog` written server-side for all staff actions; admin read-only view; no app update/delete path | Yes for current scope — DB-level immutability guarantees come with Postgres roles |
-| Testing | RBAC/ownership/sanitization integration tests against a dedicated test DB; CI-ready (`npm test`) | Partially — add CI wiring + customer-flow e2e tests |
-| Authentication | Auth.js (NextAuth v5) credentials provider, scrypt hashes, signed/encrypted JWT sessions, middleware enforcement | Framework is production-grade; **demo accounts + shared password must go**, MFA missing |
-| CSRF | Auth.js token on auth endpoints; same-origin check + SameSite=Lax on all other mutations | Yes for current scope |
-| Rate limiting | Per-IP sliding window in middleware (auth 20/min, mutations 120/min) | Partially — in-memory per instance; needs shared store (Redis) for multi-node |
-| Input validation | Zod on every API boundary | Yes (extend as routes grow) |
-| Payments | Simulated (`/api/billing` records mock entries; UI labeled) | **No** — Stripe + verified webhooks |
-| File storage | Metadata only; bytes never leave the user's device; UI labeled | **No** — presigned encrypted object storage + scanning |
-| Notifications | Queued→transport pipeline honoring preferences; MockTransport delivers inline, nothing sent | **No** — swap MockTransport for Resend/Twilio and move delivery to a worker |
-| Assistant | Local rule-based routing, no external calls | N/A for now |
-| Legal documents | Placeholders; versioned acceptance tracking is real and server-stored | **No** — counsel review required |
-| Secrets | Only `DATABASE_URL`; `.env` gitignored; no secrets in client code | Yes for current scope |
-| Health | `/api/health` reports app status, mode, db connectivity, timestamp | Yes for current scope |
+## What is being launched
 
-## Demo-only surfaces (must be removed/replaced before launch)
+- **Product:** the Job Separation Navigator. The guided intake, plan, deadline
+  tracking, checklists, timeline, support, and deadline reminder emails are free.
+  The **Case Pass** (one-time, per case, default $29 via
+  `BUREAUOS_CASE_PASS_PRICE_CENTS`) unlocks the letter generator for that case.
+- **Deadline scope:** source-checked rules for a Florida pilot.
+  - Florida Reemployment Assistance appeal: 20 days after mailing, Fla. Stat. § 443.151.
+  - Federal COBRA election: 60 days from the later of coverage loss or the
+    election notice, 26 C.F.R. § 54.4980B-6.
+  - Marketplace special enrollment: 60 days after coverage ends.
 
-- Demo accounts (`demo@bureauos.app`, `admin@bureauos.app`, published shared
-  password) and the demo seed-ensure endpoint (`/api/auth/demo`).
-- `/api/dev/reset` (database wipe/reseed; refused in production builds unless
-  `BUREAUOS_ALLOW_RESET=true`).
-- Seeded demo cases/tickets/reviews/files.
-- Simulated checkout copy and mock billing history.
+  Everything else is NEEDS VERIFICATION, never estimated. The rules were checked
+  against their sources on 2026-10-10 and 2026-10-11, and are **not yet reviewed
+  by an attorney**.
+- **Not offered:**
+  - human review and the human-assisted tiers (off unless
+    `BUREAUOS_HUMAN_REVIEW_ENABLED=true`)
+  - file uploads (removed)
+  - SMS
+- **Preview:** the other five navigators stay available as free organizing
+  tools, labelled Preview, with nothing for sale.
 
-## Security checklist for production
+## Verified on this branch
 
-- [x] Real authentication framework (Auth.js credentials + JWT sessions) —
-      still needed: remove demo accounts, add MFA for staff
-- [x] CSRF protection (Auth.js tokens + same-origin checks) and SameSite=Lax
-      session policy
-- [x] Rate limiting on auth + mutation routes — still needed: shared store for
-      multi-instance deploys
-- [x] Row-level ownership tests + RBAC integration tests (`npm test`, 23
-      tests) — still needed: run them in CI on every push
-- [x] Append-only audit log for staff actions (status changes, notes, file
-      verification, review decisions) — still needed: DB-role enforcement of
-      immutability once on Postgres
-- [ ] Postgres with encryption at rest, automated backups, tested restores
-- [ ] Secure file storage: private buckets, presigned short-TTL URLs,
-      content-type validation, malware scanning
-- [ ] Stripe webhook signature verification; idempotent handlers
-- [ ] PII lifecycle: minimization, retention policy, export + delete endpoints
-- [ ] Counsel-reviewed terms/privacy/disclaimer (acceptance plumbing already
-      records user, case, version, timestamp server-side)
-- [ ] Structured logging + error monitoring; remove console-warn reconciliation
-- [ ] Dependency audit (npm audit findings) resolved or risk-accepted
+| Area | Evidence |
+|---|---|
+| Automated tests | 176 integration tests pass on **SQLite and on PostgreSQL 16** (`npm test`; `TEST_DATABASE_URL=postgresql://…_test npm test`) |
+| Typecheck / lint / build | Clean. The production build has one benign warning: `jose`, inside Auth.js, references `CompressionStream` in Edge middleware for JWE compression that Auth.js doesn't use |
+| PostgreSQL migrations | Applied to a real Postgres 16 server; `prisma migrate diff --from-url … --exit-code` reports no drift |
+| Production build, run against Postgres (browser + HTTP) | Signup → Job Separation case → branching intake → terms acceptance → plan with Florida appeal **Nov 2, 2026** (Oct 13 + 20) and Marketplace **Dec 30, 2026** (Oct 31 + 60). COBRA shows NEEDS VERIFICATION. Letters locked behind the Case Pass. Data export. Account deletion |
+| Production fail-closed (HTTP) | Demo login, dev reset, and payment simulation return 404. Checkout and Stripe webhook return 503 without Stripe. Scheduled runner returns 503 without `CRON_SECRET`. Password reset says it is unavailable without email. Uploads 410, human review 409. Cross-origin mutation 403. No demo/dev UI in production HTML |
+| Server-side entitlement (signed-in browser session) | Render or save a letter without a Case Pass: 402. Self-grant or tier change: 403. Paid letter text is absent from the client bundle (`tests/letters.test.ts`, plus a bundle grep) |
+| Webhook over real HTTP (staging profile, local test secrets) | Forged signature: 400. Wrong amount: not fulfilled. Genuine event: paid → Case Pass active → letter rendered and saved. Replay: "duplicate". Full refund: Case Pass revoked, saved letter kept. Late replay after refund: not re-granted. **Stripe's side was simulated with locally signed events. No real Stripe account was involved** |
+| Staff | Account provisioned with `npm run admin:provision` (TOTP). Production sign-in refused without the code and accepted with it. Case Pass grant needs a reason and is audited. Staff can't self-delete |
+| Security headers | CSP (no third-party origins, `frame-ancestors 'none'`), nosniff, DENY framing, referrer and permissions policies; HSTS when served over https |
 
-## What Phase 1 actually bought
+## Launch blockers
 
-Before Phase 1, every security property was fictional: any user could read any
-data by editing localStorage. Now:
+These need the owner. Each is genuinely external to the code.
 
-- ownership is enforced where it counts (the server), per request;
-- customers cannot reach admin data through any API path (verified: admin
-  routes and admin-only actions return 401/403/404 for customer sessions);
-- staff-only notes never appear in customer payloads;
-- disclaimer acceptances, billing state, tickets, reviews, and admin notes
-  survive browser data clearing and are attributable to real rows;
-- the API surface is now integration-testable without a browser.
+| # | Blocker | What to do | How to confirm |
+|---|---|---|---|
+| 1 | **Stripe account + live verification** | Create the account; create a restricted key with Checkout Sessions write. Add a webhook endpoint `https://<domain>/api/stripe/webhook` with events `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed`. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | On staging (`BUREAUOS_STRIPE_ALLOW_TEST_MODE=true`, test keys): buy with card 4242…, see `/checkout/return` confirm, letters unlock, a refund in the Dashboard re-locks. Then one real low-value live purchase and refund |
+| 2 | **Hosted PostgreSQL** | Managed Postgres with TLS, encryption at rest, and point-in-time recovery. Set `DATABASE_URL=postgresql://…?sslmode=require`; deploy runs `npm run build` (generates the Postgres client), then `npm run db:migrate` | `/api/health` → `database: connected`; a restore drill (below) completed once |
+| 3 | **Email (Resend)** | Verify a sending domain; set `RESEND_API_KEY`, `EMAIL_FROM` | Welcome email arrives; `/forgot-password` sends a working link; Settings → Notifications shows "Emailed" |
+| 4 | **Scheduler** | Call `GET /api/internal/notifications` every 15 minutes with `Authorization: Bearer $CRON_SECRET` (≥16 random chars) | Response `ok: true`; a deadline 3 days out produces a reminder |
+| 5 | **Production configuration** | `AUTH_SECRET` (`openssl rand -hex 32`), `BUREAUOS_APP_URL=https://…` (also at **build** time — it enables HSTS), `BUREAUOS_TRUSTED_PROXY_HOPS` for the host, `UPSTASH_REDIS_REST_URL/TOKEN` for shared rate limits on serverless/multi-instance hosting | Sign-in works over https; cross-origin POSTs get 403 |
+| 6 | **Staff accounts** | `DATABASE_URL=<prod> npm run admin:provision -- --email … --name …` per operator; enroll TOTP immediately | Staff sign-in requires the code |
+| 7 | **Attorney review** | Review the three deadline rules (`lib/deadline-rules.ts`, `lib/jurisdictions.ts`), the letter templates (`lib/server/letters.ts`), and the Terms / Privacy / Disclaimer drafts. Decide: business entity and contact address, Case Pass refund window, governing law and dispute resolution, named hosting/DB providers, payment-record retention period | Remove the "Draft — pending attorney review" notices (`components/legal-draft-notice.tsx`); bump `DISCLAIMER_VERSION` |
 
-That is the foundation the checklist above builds on — necessary, not
-sufficient.
+## Remaining issues (not blocking a controlled pilot, but tracked)
+
+- **No email verification at signup.** A mistyped address means no receipts or
+  reset links. Add a verify-email step once Resend is live.
+- **CSP allows `'unsafe-inline'` scripts and styles,** which Next's App Router
+  hydration needs. Nothing can load from another origin; a per-request nonce
+  would remove the allowance at the cost of making every page dynamic.
+- **Dependency advisories:** five, in `next`'s bundled PostCSS and the Prisma
+  CLI's `deepmerge-ts`. None is reachable from user input. They are tolerated in
+  `audit-allowlist.json` until 2027-01-31; the fix is Next 16 and Prisma 7 (major
+  upgrades). Across all dependencies (dev tooling included) `npm audit` reports
+  14; the other 9 are in build and lint tooling only (eslint-config-next, Tailwind
+  v3's PostCSS chain, glob utilities) and never ship to the server or browser.
+- **Reminder timing uses UTC days,** so near midnight a reminder can say
+  "tomorrow" a few hours early or late for US time zones. The email names the
+  calendar date.
+- **Florida only.** Other states get the tools with NEEDS VERIFICATION
+  deadlines. Adding a state means a source-checked rule plus attorney review.
+- **Observability:** errors go to `console.error` with ids only. Connect the
+  host's log drain or an error tracker before launch.
+- **Legacy data:** the `UploadedFile` table is frozen (no writes). Existing
+  metadata rows stay exportable and deletable.
+
+## Operations runbook
+
+**Deploy:** set the variables from `.env.example`. Then `npm ci`, `npm run build`
+(Postgres client and Next build), `npm run db:migrate`, `npm start`. CI
+(`.github/workflows/ci.yml`) must be green: SQLite suite, Postgres suite with
+drift check, build, and the dependency gate.
+
+**Schema changes:** edit `prisma/schema.prisma`, then
+`npm run db:migration:new -- <name>`, which writes migrations for both engines.
+Commit both; CI applies the Postgres one to a real server.
+
+**Backups and restore drill** (do once before launch, then quarterly):
+1. Enable the provider's point-in-time recovery, plus a nightly logical backup:
+   `pg_dump --format=custom --no-owner "$DATABASE_URL" > bureauos-$(date +%F).dump`,
+   stored encrypted, off the database host.
+2. Restore into a scratch database:
+   `createdb bureauos_restore_verify && pg_restore --no-owner -d bureauos_restore_verify bureauos-<date>.dump`.
+3. Check schema integrity:
+   `npx prisma migrate diff --from-url postgresql://…/bureauos_restore_verify --to-schema-datamodel prisma/postgres/schema.prisma --exit-code`.
+4. Point a staging instance at it and check `/api/health`, a sign-in, and a case
+   page. Record the date and the restore time. Drop the scratch database.
+
+**Data lifecycle:** run `npm run retention` daily (`-- --dry-run` to preview).
+Customers delete their own data via Settings. Purchase rows are kept with the
+person unlinked.
+
+**Refunds:** issue them in the Stripe Dashboard; the webhook removes the Case
+Pass automatically. A staff goodwill grant uses the admin case page (reason
+required, audited).
+
+**Incident: payment taken but no Case Pass.** Check `Purchase.status` for the
+session id, then the Stripe Dashboard's event delivery for
+`checkout.session.completed`. Redelivering from Stripe is safe (idempotent). If
+the amount didn't match, fulfilment is refused by design and logged: refund, or
+grant manually with a reason.
+
+## Security ledger
+
+| Control | State |
+|---|---|
+| Authorization | Ownership and role are re-checked on the server for every request. A customer can't reach another's data (404), staff-only fields are stripped, and paid features are entitlement-checked on the server |
+| Sessions | Auth.js JWT, 7 days. Rejected after a password change or reset (`sessionVersion`) or account deletion |
+| Staff | TOTP MFA required in production; audited actions (status, assignment, notes, Case Pass grant and removal, case deletion) |
+| Abuse | Per-IP limits (auth 20/min, mutations 120/min). Per-account sign-in (10 per 15 min), re-authentication (8 per 15 min), reset emails (3 per hour), exports (5 per 10 min). Shared across instances only with Upstash configured |
+| CSRF | Auth.js tokens on its endpoints; same-origin check (pinned to `BUREAUOS_APP_URL`) on every other mutation |
+| Payments | Server-created Checkout; signature-verified, idempotent webhook (ledger row in the same transaction); amount, currency, and session checked; refunds and disputes revoke; test keys refused in production |
+| Secrets | Server-only modules never imported by client code (enforced by test). Paid letter text is server-only. No secrets in the bundle |
+| Privacy | Export (JSON), self-service account deletion, retention sweep. Reset tokens stored only as hashes, and their email bodies cleared after send. No uploads, no third-party scripts |
+| Dev surfaces | Demo accounts refused at sign-in in production; demo/reset/simulate routes return 404 in production; seed and wipe refuse in production |

@@ -20,7 +20,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
             <Link href="/pricing" className="hidden px-3 text-sm text-muted-foreground transition-colors hover:text-foreground sm:block">
               Pricing
             </Link>
-            <Link href="/login" className="px-3 text-sm text-muted-foreground transition-colors hover:text-foreground">
+            <Link href="/login" className="whitespace-nowrap px-3 text-sm text-muted-foreground transition-colors hover:text-foreground">
               Log in
             </Link>
             <Link href="/signup">
