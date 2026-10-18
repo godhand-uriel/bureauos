@@ -207,13 +207,25 @@ export const changePasswordInputSchema = z.object({
   newPassword: z.string().min(10).max(200),
 });
 
+export const passwordResetRequestSchema = z.object({
+  email: z.string().trim().email().max(200),
+});
+
+export const passwordResetConfirmSchema = z.object({
+  token: z.string().min(20).max(200),
+  newPassword: z.string().min(10).max(200),
+});
+
 export const deleteAccountInputSchema = z.object({
   password: z.string().min(1).max(200),
   /** The user types DELETE — a deliberate act, not a stray click. */
   confirm: z.literal("DELETE"),
 });
 
-export const prefsUpdateSchema = notificationPreferencesSchema.partial();
+/** SMS and missing-document reminders are not offered, so they can't be switched on. */
+export const prefsUpdateSchema = notificationPreferencesSchema
+  .omit({ smsReminders: true, missingDocumentReminders: true })
+  .partial();
 
 export const acceptanceInputSchema = z.object({
   id: clientId.optional(),

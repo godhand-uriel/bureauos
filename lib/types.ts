@@ -433,7 +433,7 @@ export interface DisclaimerAcceptance {
 }
 
 /* ------------------------------------------------------------------ */
-/* Notifications (mock outbox; Resend/Twilio/SES adapters later)       */
+/* Notifications (email via Resend; see lib/server/notify.ts)          */
 /* ------------------------------------------------------------------ */
 
 export type NotificationEventType =
@@ -446,16 +446,26 @@ export type NotificationEventType =
   | "account_security"
   | "welcome";
 
+/**
+ * - queued     waiting to be delivered (or retried)
+ * - sent       accepted by the email provider
+ * - failed     the provider refused it, or retries ran out
+ * - skipped    no email provider is configured in production — nothing was sent
+ * - mock_sent  development only: recorded in the local outbox, nothing was sent
+ */
+export type NotificationStatus = "queued" | "sent" | "failed" | "skipped" | "mock_sent";
+
 export interface NotificationEvent {
   id: string;
   userId: string;
   type: NotificationEventType;
+  /** Email only. SMS is not offered; older rows may say "sms". */
   channel: "email" | "sms";
   subject: string;
   body: string;
   createdAt: string;
-  /** "mock_sent" — recorded in the local outbox; no real delivery in the MVP. */
-  status: "queued" | "mock_sent";
+  status: NotificationStatus;
+  sentAt: string | null;
 }
 
 /* ------------------------------------------------------------------ */

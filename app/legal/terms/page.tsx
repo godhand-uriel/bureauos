@@ -1,69 +1,117 @@
 import type { Metadata } from "next";
-import { Callout } from "@/components/callout";
+import { LegalDraftNotice } from "@/components/legal-draft-notice";
+import { DISCLAIMER_VERSION } from "@/lib/constants";
+import { CASE_PASS_NAME } from "@/lib/launch";
 
 export const metadata: Metadata = { title: "Terms of Service" };
+
+function Section({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h2 className="text-base font-semibold text-foreground">
+        {n}. {title}
+      </h2>
+      <div className="mt-2 space-y-2">{children}</div>
+    </div>
+  );
+}
 
 export default function TermsPage() {
   return (
     <article className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Terms of Service</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Version 2026-07-07.v1 · Demo MVP terms</p>
+        <p className="mt-2 text-sm text-muted-foreground">Version {DISCLAIMER_VERSION} · Draft</p>
       </div>
 
-      <Callout variant="warning" title="Demo document">
-        This is a plain-language placeholder for the BureauOS MVP. Before any commercial launch,
-        replace it with terms drafted or reviewed by a qualified attorney.
-      </Callout>
+      <LegalDraftNotice
+        openItems={[
+          "The legal name and contact address of the business offering BureauOS",
+          "The refund window and conditions for the Case Pass",
+          "Governing law, venue, and how disputes are resolved",
+          "Final wording of the warranty disclaimer and limitation of liability",
+        ]}
+      />
 
-      <section className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">1. What BureauOS is</h2>
-          <p className="mt-2">
-            BureauOS is an organizational tool for bureaucratic processes. It helps you collect
-            information, track tasks and deadlines, prepare documents and letters, and understand
-            common process steps. BureauOS is <strong className="text-foreground">not a law firm</strong>,
-            does not provide legal advice, and no attorney-client relationship is created by using it.
+      <section className="space-y-5 text-sm leading-relaxed text-muted-foreground">
+        <Section n={1} title="What BureauOS is">
+          <p>
+            BureauOS is self-service software for organizing a bureaucratic problem: it asks you
+            questions, builds a checklist and action plan from fixed rules, tracks dates, and helps
+            you write letters. BureauOS is <strong className="text-foreground">not a law firm</strong>,
+            does not give legal advice, does not represent you, and does not file or send anything on
+            your behalf. Using it creates no attorney-client relationship.
           </p>
-        </div>
-        <div>
-          <h2 className="text-base font-semibold text-foreground">2. Your responsibilities</h2>
-          <p className="mt-2">
-            You are responsible for the accuracy of information you enter, for reviewing and editing
-            any generated letter or plan before using it, and for verifying deadlines and requirements
-            with the relevant official agency or a qualified professional. Deadlines and requirements
-            vary by jurisdiction and change over time.
+          <p>
+            The Job Separation Navigator is the only navigator offered as a finished product.
+            Deadline calculations in it are currently available for Florida only. The other navigators
+            are previews: general organizing tools with no verified deadline rules.
           </p>
-        </div>
-        <div>
-          <h2 className="text-base font-semibold text-foreground">3. Service packages</h2>
-          <p className="mt-2">
-            Paid packages add organizational review and preparation support by the BureauOS team.
-            Human-assisted services depend on operational availability. Professional review is an
-            organizational review of your case file — it is not legal representation.
+        </Section>
+
+        <Section n={2} title="Your account">
+          <p>
+            You must be at least 18 to create an account. Keep your password private; you are
+            responsible for activity in your account. You can download your data or delete your
+            account at any time from Settings.
           </p>
-        </div>
-        <div>
-          <h2 className="text-base font-semibold text-foreground">4. Accounts and data</h2>
-          <p className="mt-2">
-            You are responsible for keeping your account credentials secure. In this local demo, all
-            data is stored in your browser. See the Privacy Policy for how data is handled.
+        </Section>
+
+        <Section n={3} title="Your responsibilities">
+          <p>
+            You are responsible for the accuracy of what you enter, for reviewing and editing every
+            letter before you use it, and for checking deadlines and requirements with the agency
+            handling your matter. A deadline shown in BureauOS is calculated only from dates you
+            entered and the rule it cites; the date printed on your official notice always controls.
+            Where BureauOS cannot establish a date, it says NEEDS VERIFICATION — it does not guess.
           </p>
-        </div>
-        <div>
-          <h2 className="text-base font-semibold text-foreground">5. No guarantees of outcome</h2>
-          <p className="mt-2">
-            Bureaucratic outcomes depend on facts, agencies, and rules outside our control. BureauOS
-            makes no guarantee that any application, appeal, claim, or dispute will succeed.
+        </Section>
+
+        <Section n={4} title={`The ${CASE_PASS_NAME}`}>
+          <p>
+            The free service includes the guided intake, action plan, deadline tracking, checklists,
+            timeline, and support tickets. The Case Pass is an optional one-time purchase that unlocks
+            the letter generator for one Job Separation case. The price is shown before you pay. It is
+            not a subscription and does not renew.
           </p>
-        </div>
-        <div>
-          <h2 className="text-base font-semibold text-foreground">6. Limitation of liability</h2>
-          <p className="mt-2">
-            To the maximum extent permitted by law, BureauOS is provided &quot;as is&quot; and our liability is
-            limited to the amount you paid for the service in the preceding 12 months.
+          <p>
+            A Case Pass applies only to the case it was bought for. It cannot be moved to another
+            case, and it is removed if the case or your account is deleted. It does not include legal
+            advice, review of your case by a person, or any guarantee of a result.
           </p>
-        </div>
+        </Section>
+
+        <Section n={5} title="Payments and refunds">
+          <p>
+            Payments are processed by Stripe on a Stripe-hosted page; BureauOS never receives your
+            card details. The Case Pass becomes active once Stripe confirms the payment. If a payment
+            is refunded, or disputed with your card issuer, the Case Pass is removed while that is
+            resolved. Letters you already saved stay in your case.
+          </p>
+          <p>To ask for a refund, open a support ticket in the Billing category.</p>
+        </Section>
+
+        <Section n={6} title="Services not offered">
+          <p>
+            Human review of your case, document preparation, and other staffed services are not
+            currently offered, and BureauOS does not store uploaded documents.
+          </p>
+        </Section>
+
+        <Section n={7} title="No guarantee of outcome">
+          <p>
+            Outcomes depend on facts, agencies, and rules outside BureauOS&apos;s control. BureauOS does
+            not guarantee eligibility for any benefit or the result of any claim, appeal, or dispute.
+          </p>
+        </Section>
+
+        <Section n={8} title="Availability and changes">
+          <p>
+            The service is provided as it is and may change, or be interrupted, from time to time.
+            Material changes to these terms will be shown to you, and you will be asked to accept the
+            new version before continuing to use features that require acceptance.
+          </p>
+        </Section>
       </section>
     </article>
   );

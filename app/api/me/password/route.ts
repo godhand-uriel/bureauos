@@ -29,6 +29,8 @@ export async function POST(request: Request) {
     where: { id: user.id },
     data: { passwordHash: hashPassword(newPassword), sessionVersion: { increment: 1 } },
   });
+  // Outstanding reset links die with the old password.
+  await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
 
   await queueNotification(
     user.id,

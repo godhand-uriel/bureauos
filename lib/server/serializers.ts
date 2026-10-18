@@ -320,6 +320,7 @@ export function notificationToDomain(n: Prisma.NotificationEventGetPayload<objec
     body: n.body,
     createdAt: iso(n.createdAt),
     status: n.status as NotificationEvent["status"],
+    sentAt: n.sentAt ? iso(n.sentAt) : null,
   };
 }
 

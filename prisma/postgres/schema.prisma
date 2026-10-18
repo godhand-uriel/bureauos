@@ -36,6 +36,7 @@ model User {
   files             UploadedFile[]
   acceptances       DisclaimerAcceptance[]
   notifications     NotificationEvent[]
+  passwordResets    PasswordResetToken[]
   purchases         Purchase[]
   entitlements      Entitlement[]
 }
@@ -352,16 +353,45 @@ model AuditLog {
   @@index([caseId])
 }
 
+// Outbound notifications (email only — SMS is not offered). Written as
+// "queued" and delivered by lib/server/notify.ts, inline and then by the
+// scheduled runner (/api/internal/notifications) for retries.
+//   status: queued | sent | failed | skipped (no provider configured in
+//           production — nothing was sent) | mock_sent (development outbox)
 model NotificationEvent {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String    @id @default(cuid())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  type              String // NotificationEventType values
+  channel           String    @default("email")
+  subject           String
+  body              String
+  status            String    @default("queued")
+  attempts          Int       @default(0)
+  nextAttemptAt     DateTime?
+  lastError         String?
+  providerMessageId String?
+  sentAt            DateTime?
+  // Body holds a secret (e.g. a password-reset link): replaced once delivery settles.
+  sensitive         Boolean   @default(false)
+  // Prevents the same reminder being queued twice (e.g. "deadline:<id>:<date>:3").
+  dedupeKey         String?   @unique
+  createdAt         DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([status, nextAttemptAt])
+}
+
+// One-time password-reset links. Only a SHA-256 hash of the token is stored;
+// the token itself exists only in the email. Single use, 30-minute lifetime.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
-  type      String // NotificationEventType values
-  channel   String // "email" | "sms"
-  subject   String
-  body      String
-  status    String   @default("mock_sent") // queued | mock_sent (no real delivery in Phase 1)
-  createdAt DateTime @default(now())
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }

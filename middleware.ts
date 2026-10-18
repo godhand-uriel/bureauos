@@ -25,6 +25,12 @@ const { auth } = NextAuth(authConfig);
 /** Authenticated by Stripe signature / cron bearer secret, never by session. */
 const MACHINE_API = ["/api/stripe/webhook", "/api/internal"];
 const PUBLIC_API = ["/api/health", "/api/auth", ...MACHINE_API];
+const OWN_AUTH_ROUTES = [
+  "/api/auth/signup",
+  "/api/auth/demo",
+  "/api/auth/password-reset/request",
+  "/api/auth/password-reset/confirm",
+];
 const PROTECTED_PAGES = [
   "/dashboard",
   "/assistant",
@@ -70,8 +76,8 @@ export default auth(async (req) => {
       return NextResponse.json({ error: "Cross-origin request refused." }, { status: 403 });
     }
   }
-  // /api/auth/signup and /api/auth/demo are ours (not Auth.js) — same check.
-  if (mutating && (pathname === "/api/auth/signup" || pathname === "/api/auth/demo")) {
+  // Our own routes under /api/auth (not Auth.js's, which carry a CSRF token) — same check.
+  if (mutating && OWN_AUTH_ROUTES.some((p) => pathname === p)) {
     if (!isAllowedOrigin(req.headers)) {
       return NextResponse.json({ error: "Cross-origin request refused." }, { status: 403 });
     }

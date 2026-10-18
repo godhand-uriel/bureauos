@@ -10,10 +10,11 @@ interface CheckboxProps {
   className?: string;
   "aria-label"?: string;
   id?: string;
+  disabled?: boolean;
 }
 
 /** Accessible custom checkbox (button-based, like Radix). */
-export function Checkbox({ checked, onCheckedChange, className, id, ...props }: CheckboxProps) {
+export function Checkbox({ checked, onCheckedChange, className, id, disabled = false, ...props }: CheckboxProps) {
   return (
     <button
       type="button"
@@ -21,9 +22,10 @@ export function Checkbox({ checked, onCheckedChange, className, id, ...props }: 
       id={id}
       aria-checked={checked}
       aria-label={props["aria-label"]}
+      disabled={disabled}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "flex h-5 w-5 shrink-0 items-center justify-center rounded border border-input shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "flex h-5 w-5 shrink-0 items-center justify-center rounded border border-input shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
         checked ? "border-primary bg-primary text-primary-foreground" : "bg-background",
         className,
       )}

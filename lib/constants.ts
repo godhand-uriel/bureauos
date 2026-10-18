@@ -6,7 +6,8 @@ import type { NotificationEventType, NotificationPreferences } from "@/lib/types
  * seed script alike.
  */
 
-export const DISCLAIMER_VERSION = "2026-07-07.v1";
+/** Bump when the Terms, Privacy Policy or Disclaimer change materially: every case asks for acceptance again. */
+export const DISCLAIMER_VERSION = "2026-10-18.v2";
 
 export const DEMO_CUSTOMER_EMAIL = "demo@bureauos.app";
 export const DEMO_ADMIN_EMAIL = "admin@bureauos.app";
