@@ -9,6 +9,7 @@
     "lint": "next lint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "audit:gate": "node scripts/audit-gate.mjs",
     "db:migrate": "node scripts/prisma-env.mjs migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:migration:new": "node scripts/new-migration.mjs",

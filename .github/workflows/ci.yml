@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "launch/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, lint, test (SQLite), build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # CI-only values. Nothing here is a real secret or touches a real service.
+      DATABASE_URL: "file:./ci.db"
+      AUTH_SECRET: "ci-only-auth-secret-not-used-anywhere-else"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: PostgreSQL schema is in sync with the source schema
+        run: npm run db:sync -- --check
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  postgres:
+    name: Migrations + full test suite on PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bureauos_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bureauos_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/bureauos_test"
+      AUTH_SECRET: "ci-only-auth-secret-not-used-anywhere-else"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply the committed PostgreSQL migrations
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+        run: node scripts/prisma-env.mjs migrate deploy
+      - name: No drift between migrations and schema
+        run: >-
+          npx prisma migrate diff
+          --from-url "$TEST_DATABASE_URL"
+          --to-schema-datamodel prisma/postgres/schema.prisma
+          --exit-code
+      - name: Full test suite against PostgreSQL
+        run: npm test
+
+  dependencies:
+    name: Production dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run audit:gate

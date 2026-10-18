@@ -1,4 +1,8 @@
 const isDev = process.env.NODE_ENV !== "production";
+// Force-HTTPS behaviour (HSTS, upgrade-insecure-requests) only for a deployment
+// that is actually served over TLS — read at build time, so set
+// BUREAUOS_APP_URL when building for production.
+const servedOverTls = /^https:\/\//i.test(process.env.BUREAUOS_APP_URL ?? "");
 
 /**
  * Content-Security-Policy.
@@ -24,7 +28,7 @@ const csp = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  ...(isDev ? [] : ["upgrade-insecure-requests"]),
+  ...(servedOverTls ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const securityHeaders = [
@@ -34,8 +38,7 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-  // Browsers ignore HSTS over plain HTTP, so this only takes effect behind TLS.
-  ...(isDev ? [] : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]),
+  ...(servedOverTls ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }] : []),
 ];
 
 /** @type {import('next').NextConfig} */
