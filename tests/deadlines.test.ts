@@ -135,22 +135,29 @@ describe("rule registry", () => {
       expect(rule.offsetDays).toBeGreaterThan(0);
       expect(rule.ruleSummary.length).toBeGreaterThan(20);
       expect(rule.caveats.length).toBeGreaterThan(20);
+      expect(rule.triggers.length).toBeGreaterThan(0);
+      for (const ref of rule.references) expect(ref.url).toMatch(/^https:\/\//);
       // No rule may be triggered by the last day of work.
-      expect(rule.trigger.questionId).not.toBe("last_day");
-      expect(rule.laterOf?.questionId).not.toBe("last_day");
+      for (const trigger of rule.triggers) {
+        expect(trigger.questionId).not.toBe("last_day");
+        expect(trigger.whyNeeded.length).toBeGreaterThan(10);
+      }
     }
   });
 
-  it("Florida appeal: 20 days after the mailing date, from the notice — not the separation", () => {
+  it("Florida appeal: counted from the distributed date on the determination — not the separation", () => {
     const rule = getDeadlineRule("fl-ra-appeal")!;
     expect(rule.citation).toContain("443.151");
-    const r = computeRuleDeadline(rule, { ra_determination_mailed_date: "2026-10-05" }, TODAY);
-    expect(r).toMatchObject({ status: "calculated", date: "2026-10-25" });
-    if (r.status === "calculated") expect(r.basis.date).toBe("2026-10-05");
-    // Year boundary
+    expect(rule.citation).toContain("73B-20.005");
+    expect(rule.sourceUrl).toBe("https://floridajobs.org/workforce-resources/reemployment-assistance/claimants/file-an-appeal");
+    const r = computeRuleDeadline(rule, { ra_determination_mailed_date: "2026-10-13" }, "2026-10-18");
+    expect(r).toMatchObject({ status: "calculated", date: "2026-11-02", countedDate: "2026-11-02", skipped: [] });
+    if (r.status === "calculated") expect(r.basis.date).toBe("2026-10-13");
+    // Year boundary: day 20 is Saturday, Jan 9 -> Monday, Jan 11, 2027.
     expect(computeRuleDeadline(rule, { ra_determination_mailed_date: "2026-12-20" }, "2026-12-22")).toMatchObject({
       status: "calculated",
-      date: "2027-01-09",
+      countedDate: "2027-01-09",
+      date: "2027-01-11",
     });
     // The separation date alone establishes nothing.
     expect(computeRuleDeadline(rule, { last_day: "2026-09-18" }, TODAY).status).toBe("needs_verification");
@@ -170,22 +177,6 @@ describe("rule registry", () => {
       expect(r.status).toBe("needs_verification");
       expect("date" in r).toBe(false);
     }
-  });
-
-  it("COBRA: 60 days from the LATER of coverage loss and the election notice; needs the notice", () => {
-    const rule = getDeadlineRule("us-cobra-election")!;
-    // Coverage ends after the notice → count from coverage end.
-    const a = computeRuleDeadline(rule, { cobra_notice_date: "2026-10-01", coverage_end_date: "2026-10-31" }, TODAY);
-    expect(a).toMatchObject({ status: "calculated", date: "2026-12-30" });
-    if (a.status === "calculated") expect(a.basis.questionId).toBe("coverage_end_date");
-    // Notice arrives after coverage ended → count from the notice.
-    const b = computeRuleDeadline(rule, { cobra_notice_date: "2026-10-09", coverage_end_date: "2026-09-30" }, TODAY);
-    expect(b).toMatchObject({ status: "calculated", date: "2026-12-08" });
-    if (b.status === "calculated") expect(b.basis.questionId).toBe("cobra_notice_date");
-    // Notice only.
-    expect(computeRuleDeadline(rule, { cobra_notice_date: "2026-10-01" }, TODAY)).toMatchObject({ date: "2026-11-30" });
-    // Coverage end alone does not establish the election deadline.
-    expect(computeRuleDeadline(rule, { coverage_end_date: "2026-10-31" }, TODAY).status).toBe("needs_verification");
   });
 
   it("Marketplace: 60 days after coverage ends; a future coverage end date is valid", () => {
@@ -208,9 +199,11 @@ describe("job separation plan", () => {
   it("Florida + determination date → calculated, source-backed appeal deadline", () => {
     const c = plan({ ...FL_BASE, filed_unemployment: "denied", ra_determination_mailed_date: "2026-10-05" });
     const d = byKey(c, "rule:fl-ra-appeal")!;
-    expect(d).toMatchObject({ kind: "official", date: "2026-10-25", verified: false });
-    expect(d.source).toMatchObject({ ruleId: "fl-ra-appeal", jurisdiction: "Florida", checkedOn: "2026-10-10" });
-    expect(d.source?.url).toContain("flsenate.gov");
+    // Day 20 (Oct 25, 2026) is a Sunday -> next business day.
+    expect(d).toMatchObject({ kind: "official", date: "2026-10-26", verified: false });
+    expect(d.source).toMatchObject({ ruleId: "fl-ra-appeal", jurisdiction: "Florida", checkedOn: "2026-10-18" });
+    expect(d.source?.url).toContain("floridajobs.org");
+    expect(d.source?.references?.some((r) => r.url.includes("flsenate.gov"))).toBe(true);
     expect(d.trigger).toMatchObject({ questionId: "ra_determination_mailed_date", date: "2026-10-05" });
     expect(d.note).toContain("official notice");
     expect(c.plan?.priority).toBe("urgent");
@@ -236,7 +229,7 @@ describe("job separation plan", () => {
       had_health_insurance: true,
       employer_size: "20_plus",
       cobra_notice_received: true,
-      cobra_notice_date: "2026-10-01",
+      cobra_notice_provided_date: "2026-10-01",
       coverage_end_date: "2026-10-31",
       received_final_pay: false,
     });
@@ -277,7 +270,7 @@ describe("job separation plan", () => {
   });
 
   it("COBRA is calculated only when federal COBRA plausibly applies", () => {
-    const withDates = { ...FL_BASE, had_health_insurance: true, cobra_notice_received: true, cobra_notice_date: "2026-10-01", coverage_end_date: "2026-10-31" };
+    const withDates = { ...FL_BASE, had_health_insurance: true, cobra_notice_received: true, cobra_notice_provided_date: "2026-10-01", coverage_end_date: "2026-10-31" };
     expect(byKey(plan({ ...withDates, employer_size: "20_plus" }), "rule:us-cobra-election")?.date).toBe("2026-12-30");
     for (const size of ["under_20", "unsure"]) {
       const c = plan({ ...withDates, employer_size: size });
@@ -308,7 +301,7 @@ describe("job separation plan", () => {
     const second = generatePlanForCase(withDate, TODAY);
     const after = byKey(second, "rule:fl-ra-appeal")!;
     expect(after.id).toBe(before.id);
-    expect(after.date).toBe("2026-10-25");
+    expect(after.date).toBe("2026-10-26");
     expect(second.deadlines.filter((d) => d.key === "rule:fl-ra-appeal")).toHaveLength(1);
 
     // User confirms it, then corrects the mailing date → confirmation must reset.
@@ -443,10 +436,10 @@ describe("intake branching", () => {
   const questions = NAVIGATORS.find((n) => n.slug === "job-separation")!.questions;
 
   it("hides follow-ups through the whole chain and prunes their stale answers", () => {
-    const answers = { had_health_insurance: false, cobra_notice_received: true, cobra_notice_date: "2026-10-01", coverage_end_date: "2026-10-31" };
+    const answers = { had_health_insurance: false, cobra_notice_received: true, cobra_notice_provided_date: "2026-10-01", coverage_end_date: "2026-10-31" };
     const visible = visibleQuestions(questions, answers).map((q) => q.id);
     expect(visible).not.toContain("cobra_notice_received");
-    expect(visible).not.toContain("cobra_notice_date"); // parent matches, grandparent doesn't
+    expect(visible).not.toContain("cobra_notice_provided_date"); // parent matches, grandparent doesn't
     expect(visible).not.toContain("coverage_end_date");
     const pruned = pruneHiddenAnswers(questions, answers);
     expect(pruned).toEqual({ had_health_insurance: false });
@@ -517,17 +510,21 @@ describe("server actions for deadlines", () => {
     const rows = await prisma.deadline.findMany({ where: { caseId, key: "rule:fl-ra-appeal" } });
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe(before.id);
-    expect(rows[0].date?.toISOString()).toBe("2026-10-25T12:00:00.000Z");
+    // Day 20 is Sunday, Oct 25 -> the next business day, Monday, Oct 26.
+    expect(rows[0].date?.toISOString()).toBe("2026-10-26T12:00:00.000Z");
     if (result.ok) {
       const d = result.case.deadlines.find((x) => x.key === "rule:fl-ra-appeal")!;
-      expect(d).toMatchObject({ date: "2026-10-25", kind: "official" });
+      expect(d).toMatchObject({ date: "2026-10-26", kind: "official" });
       expect(d.trigger?.date).toBe("2026-10-05");
+      expect(d.note).toContain("Sunday");
+      expect(d.note).toContain("next business day");
+      expect(d.source?.references?.map((r) => r.label).join(" ")).toContain("73B-20.005");
     }
     // …and it can now be confirmed against the notice.
     expect((await performCaseAction(owner, caseId, { type: "toggle_deadline", deadlineId: before.id })).ok).toBe(true);
   });
 
-  it("entering a COBRA notice date also records that the notice was received", async () => {
+  it("COBRA: the notice date alone calculates nothing; the deadline appears once both dates are recorded", async () => {
     for (const [questionId, value] of [["had_health_insurance", true], ["employer_size", "20_plus"]] as const) {
       await prisma.intakeAnswer.upsert({
         where: { caseId_questionId: { caseId, questionId } },
@@ -535,11 +532,26 @@ describe("server actions for deadlines", () => {
         update: { valueJson: JSON.stringify(value) },
       });
     }
-    const result = await performCaseAction(owner, caseId, { type: "set_trigger_date", questionId: "cobra_notice_date", date: "2026-10-01" });
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.case.intake.answers.cobra_notice_received).toBe(true);
-      expect(result.case.deadlines.find((d) => d.key === "rule:us-cobra-election")?.date).toBe("2026-11-30");
+    const first = await performCaseAction(owner, caseId, { type: "set_trigger_date", questionId: "cobra_notice_provided_date", date: "2026-10-01" });
+    expect(first.ok).toBe(true);
+    if (first.ok) {
+      // Recording when the notice was provided also records that it was received.
+      expect(first.case.intake.answers.cobra_notice_received).toBe(true);
+      const d = first.case.deadlines.find((x) => x.key === "rule:us-cobra-election")!;
+      expect(d.date).toBeNull();
+      // The card now asks for the date that is still missing.
+      expect(d.trigger).toMatchObject({ questionId: "coverage_end_date", date: null });
+      expect(d.note).toMatch(/coverage ends/);
+    }
+    const row = await prisma.deadline.findFirstOrThrow({ where: { caseId, key: "rule:us-cobra-election" } });
+    expect(row.date).toBeNull();
+
+    const second = await performCaseAction(owner, caseId, { type: "set_trigger_date", questionId: "coverage_end_date", date: "2026-10-31" });
+    expect(second.ok).toBe(true);
+    if (second.ok) {
+      const d = second.case.deadlines.find((x) => x.key === "rule:us-cobra-election")!;
+      expect(d.date).toBe("2026-12-30"); // 60 days after Oct 31, the later of the two
+      expect(d.trigger).toMatchObject({ questionId: "coverage_end_date", date: "2026-10-31" });
     }
   });
 

@@ -20,14 +20,22 @@ document supersedes them.
   The **Case Pass** (one-time, per case, default $29 via
   `BUREAUOS_CASE_PASS_PRICE_CENTS`) unlocks the letter generator for that case.
 - **Deadline scope:** source-checked rules for a Florida pilot.
-  - Florida Reemployment Assistance appeal: 20 days after mailing, Fla. Stat. § 443.151.
-  - Federal COBRA election: 60 days from the later of coverage loss or the
-    election notice, 26 C.F.R. § 54.4980B-6.
+  - Florida Reemployment Assistance appeal: 20 calendar days after the
+    determination's distributed date. A last day on a Saturday, Sunday, Florida
+    state holiday (Fla. Stat. § 110.117) or federal holiday when the Postal
+    Service is closed moves to the next business day (FloridaCommerce "File an
+    Appeal"; Fla. Admin. Code R. 73B-20.005(1); Fla. Stat. § 443.151).
+    Unscheduled closures and emergency tolling orders, which the rule also
+    counts, can't be known in advance; the caveat says so.
+  - Federal COBRA election: the minimum period, 60 days after the later of
+    coverage loss and the date the election notice was *provided* (not the
+    date printed on it), 26 C.F.R. § 54.4980B-6 Q&A-1. **Both** dates are
+    required, or the deadline shows NEEDS VERIFICATION. Not moved off weekends.
   - Marketplace special enrollment: 60 days after coverage ends.
 
-  Everything else is NEEDS VERIFICATION, never estimated. The rules were checked
-  against their sources on 2026-10-10 and 2026-10-11, and are **not yet reviewed
-  by an attorney**.
+  Everything else is NEEDS VERIFICATION, never estimated. The Florida appeal and
+  COBRA rules were re-checked against their sources on 2026-10-18 and the
+  Marketplace rule on 2026-10-11. None is **reviewed by an attorney yet**.
 - **Not offered:**
   - human review and the human-assisted tiers (off unless
     `BUREAUOS_HUMAN_REVIEW_ENABLED=true`)
@@ -40,7 +48,7 @@ document supersedes them.
 
 | Area | Evidence |
 |---|---|
-| Automated tests | 176 integration tests pass on **SQLite and on PostgreSQL 16** (`npm test`; `TEST_DATABASE_URL=postgresql://…_test npm test`) |
+| Automated tests | Integration tests pass on **SQLite and on PostgreSQL 16** (`npm test`; `TEST_DATABASE_URL=postgresql://…_test npm test`). Deadline regression suite: `tests/deadline-corrections.test.ts` (weekend and holiday moves, including Oct 5, 2026 → Oct 26, 2026, and COBRA two-date, order, and calendar-boundary cases) |
 | Typecheck / lint / build | Clean. The production build has one benign warning: `jose`, inside Auth.js, references `CompressionStream` in Edge middleware for JWE compression that Auth.js doesn't use |
 | PostgreSQL migrations | Applied to a real Postgres 16 server; `prisma migrate diff --from-url … --exit-code` reports no drift |
 | Production build, run against Postgres (browser + HTTP) | Signup → Job Separation case → branching intake → terms acceptance → plan with Florida appeal **Nov 2, 2026** (Oct 13 + 20) and Marketplace **Dec 30, 2026** (Oct 31 + 60). COBRA shows NEEDS VERIFICATION. Letters locked behind the Case Pass. Data export. Account deletion |
@@ -62,7 +70,7 @@ These need the owner. Each is genuinely external to the code.
 | 4 | **Scheduler** | Call `GET /api/internal/notifications` every 15 minutes with `Authorization: Bearer $CRON_SECRET` (≥16 random chars) | Response `ok: true`; a deadline 3 days out produces a reminder |
 | 5 | **Production configuration** | `AUTH_SECRET` (`openssl rand -hex 32`), `BUREAUOS_APP_URL=https://…` (also at **build** time — it enables HSTS), `BUREAUOS_TRUSTED_PROXY_HOPS` for the host, `UPSTASH_REDIS_REST_URL/TOKEN` for shared rate limits on serverless/multi-instance hosting | Sign-in works over https; cross-origin POSTs get 403 |
 | 6 | **Staff accounts** | `DATABASE_URL=<prod> npm run admin:provision -- --email … --name …` per operator; enroll TOTP immediately | Staff sign-in requires the code |
-| 7 | **Attorney review** | Review the three deadline rules (`lib/deadline-rules.ts`, `lib/jurisdictions.ts`), the letter templates (`lib/server/letters.ts`), and the Terms / Privacy / Disclaimer drafts. Decide: business entity and contact address, Case Pass refund window, governing law and dispute resolution, named hosting/DB providers, payment-record retention period | Remove the "Draft — pending attorney review" notices (`components/legal-draft-notice.tsx`); bump `DISCLAIMER_VERSION` |
+| 7 | **Attorney review** | Review the three deadline rules (`lib/deadline-rules.ts`, `lib/jurisdictions.ts`), including the Florida holiday calendar (`lib/holidays.ts`) and the COBRA "date provided" question wording, the letter templates (`lib/server/letters.ts`), and the Terms / Privacy / Disclaimer drafts. Decide: business entity and contact address, Case Pass refund window, governing law and dispute resolution, named hosting/DB providers, payment-record retention period | Remove the "Draft — pending attorney review" notices (`components/legal-draft-notice.tsx`); bump `DISCLAIMER_VERSION` |
 
 ## Remaining issues (not blocking a controlled pilot, but tracked)
 

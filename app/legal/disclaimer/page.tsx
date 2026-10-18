@@ -40,9 +40,10 @@ export default function DisclaimerPage() {
 
         <Section title="How deadlines work">
           <p>
-            A deadline marked as an official rule is calculated only from a date you entered (such as
-            the mailing date on a notice) and a rule BureauOS checked against the source it cites,
-            with the date of that check. These calculations are currently available for Florida
+            A deadline marked as an official rule is calculated only from the date or dates the rule
+            depends on, as you entered them (such as the distributed date on a determination), and a
+            rule BureauOS checked against the sources it cites, with the date of that check. If any of
+            those dates is missing, nothing is calculated. These calculations are currently available for Florida
             unemployment appeals, federal COBRA elections, and Marketplace special enrollment. The
             rules have been checked against their sources by BureauOS but have not yet been reviewed
             by an attorney.

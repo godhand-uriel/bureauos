@@ -98,7 +98,7 @@ To: ${v.agency || "[APPEALS OFFICE NAME AND ADDRESS — COPY FROM YOUR NOTICE]"}
 Re: Appeal of Determination
 Claimant: ${ctx.senderName}
 Claimant ID: ${v.claimant_id || "[CLAIMANT ID FROM YOUR NOTICE]"}
-Determination mailed: ${v.determination_date || "[MAILING DATE ON THE DETERMINATION]"}
+Determination distributed: ${v.determination_date || "[DISTRIBUTED DATE ON THE DETERMINATION]"}
 Issue / determination number: ${v.issue_number || "[NUMBER FROM YOUR NOTICE]"}
 
 To Whom It May Concern:

@@ -249,7 +249,7 @@ export async function performCaseAction(
         return { ok: false, status: 400, error: "Enter a real calendar date." };
       }
       const triggers = DEADLINE_RULES.filter((r) => r.navigatorSlug === existing.navigatorSlug).flatMap(
-        (r) => [r.trigger, ...(r.laterOf ? [r.laterOf] : [])],
+        (r) => r.triggers,
       );
       const trigger = triggers.find((t) => t.questionId === action.questionId);
       // One day of slack so a user slightly ahead of UTC can enter "today".

@@ -196,22 +196,25 @@ export const JURISDICTION_RULES: JurisdictionRule[] = [
     category: "Unemployment appeals",
     title: "Florida Reemployment Assistance: appealing a determination",
     summary:
-      "A determination becomes final unless an appeal is filed within 20 days after the notice is mailed to your last known address, or within 20 days after delivery if it was not mailed. The period runs from the notice — not from your last day of work.",
+      "An appeal hearing must be requested within 20 calendar days after the date of the determination (its “distributed date”). If the 20th day is a Saturday, Sunday, or legal holiday, the last day to file is the next business day. The period runs from the determination — not from your last day of work.",
     deadlineType: "Appeal period",
-    deadlineDetail: "20 days after the mailing (or delivery) date of the determination notice.",
-    requiredDocuments: ["The determination notice (all pages)", "Records supporting your account of the separation"],
+    deadlineDetail:
+      "20 calendar days after the distributed date; a last day on a weekend or legal holiday moves to the next business day (Fla. Admin. Code R. 73B-20.005).",
+    requiredDocuments: ["The determination (all pages)", "Records supporting your account of the separation"],
     processSteps: [
-      "Find the mailing/distribution date and the appeal instructions on the notice",
-      "File the appeal the way the notice instructs, before the deadline printed on it",
-      "Keep proof of the date you filed",
+      "Find the distributed date and the appeal instructions on the determination",
+      "File the appeal online, by mail, or by fax as the determination instructs, before the deadline",
+      "Keep proof of the filing date (submission confirmation, postmark, or fax date-stamp)",
       "Keep requesting benefit payments while the appeal is pending, if the agency instructs you to",
     ],
     officialLinks: [
+      { label: "FloridaCommerce: File an Appeal", url: "https://floridajobs.org/workforce-resources/reemployment-assistance/claimants/file-an-appeal" },
+      { label: "Fla. Admin. Code R. 73B-20.005 (computation of time)", url: "https://www.flrules.org/gateway/ruleNo.asp?id=73B-20.005" },
       { label: "Fla. Stat. § 443.151 (Florida Senate)", url: "https://www.flsenate.gov/Laws/Statutes/2025/443.151" },
     ],
     disclaimer: VERIFY,
     reviewStatus: "source_checked",
-    lastUpdated: "2026-10-10",
+    lastUpdated: "2026-10-18",
   },
   {
     id: "fl-final-pay",
@@ -247,13 +250,15 @@ export const JURISDICTION_RULES: JurisdictionRule[] = [
     category: "Health coverage",
     title: "COBRA continuation coverage: election period",
     summary:
-      "A plan covered by federal COBRA must give you at least 60 days to elect continuation coverage, measured from the later of the date you would lose coverage or the date the election notice is sent. Federal COBRA generally applies to employers with 20 or more employees.",
+      "A plan covered by federal COBRA must give you an election period that does not end before 60 days after the later of the date you would lose coverage or the date the election notice is provided to you. Federal COBRA generally applies to employers with 20 or more employees.",
     deadlineType: "Election period",
-    deadlineDetail: "At least 60 days after the later of coverage loss or the election notice date.",
-    requiredDocuments: ["COBRA election notice", "Proof of your coverage end date"],
+    deadlineDetail:
+      "At least 60 days after the later of coverage loss and the date the notice was provided — both dates are needed to know it.",
+    requiredDocuments: ["COBRA election notice", "Proof of your coverage end date", "The envelope or email the notice came in"],
     processSteps: [
       "Confirm your coverage end date with the employer or insurer",
-      "Find the election deadline stated on the election notice",
+      "Note when the election notice was actually sent or given to you (postmark or email date), not only the date printed on it",
+      "Find the election deadline stated in the notice, and act by the earliest deadline you're given",
       "Compare COBRA premiums with Marketplace options before electing",
     ],
     officialLinks: [
@@ -262,7 +267,7 @@ export const JURISDICTION_RULES: JurisdictionRule[] = [
     ],
     disclaimer: VERIFY,
     reviewStatus: "source_checked",
-    lastUpdated: "2026-10-10",
+    lastUpdated: "2026-10-18",
   },
   {
     id: "us-marketplace-sep",

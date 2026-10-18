@@ -1,5 +1,5 @@
 import { getNavigator } from "@/lib/navigators";
-import { computeRuleDeadline, getDeadlineRule } from "@/lib/deadline-rules";
+import { computeRuleDeadline, explainCalculation, getDeadlineRule } from "@/lib/deadline-rules";
 import { addDays, daysFromToday, parseDateOnly, todayLocal, todayUtc, type DateOnly } from "@/lib/dates";
 import type {
   ActionPlan,
@@ -145,6 +145,7 @@ export function buildDeadline(
         ruleSummary: rule.ruleSummary,
         citation: rule.citation,
         url: rule.sourceUrl,
+        references: rule.references,
         checkedOn: rule.sourceCheckedOn,
         caveats: rule.caveats,
       };
@@ -154,18 +155,13 @@ export function buildDeadline(
           title: rule.title,
           kind: "official",
           date: computed.date,
-          note:
-            spec.note ??
-            `Calculated as ${rule.offsetDays} days after the ${lowerFirst(computed.basis.label)} (${computed.basis.date}). Confirm it matches the deadline printed on your official notice.`,
+          note: spec.note ?? explainCalculation(rule, computed),
           source,
           trigger: {
             questionId: computed.basis.questionId,
             label: computed.basis.label,
             date: computed.basis.date,
-            mayBeFuture: (rule.laterOf?.questionId === computed.basis.questionId
-              ? rule.laterOf
-              : rule.trigger
-            ).mayBeFuture,
+            mayBeFuture: rule.triggers.find((t) => t.questionId === computed.basis.questionId)!.mayBeFuture,
           },
         };
       }
@@ -176,11 +172,13 @@ export function buildDeadline(
         date: null,
         note: computed.reason,
         source,
+        // Ask for the first date still missing — for a two-date rule, the
+        // other one may already be recorded.
         trigger: {
-          questionId: rule.trigger.questionId,
-          label: rule.trigger.label,
+          questionId: computed.missing.questionId,
+          label: computed.missing.label,
           date: null,
-          mayBeFuture: rule.trigger.mayBeFuture,
+          mayBeFuture: computed.missing.mayBeFuture,
         },
       };
     }

@@ -93,6 +93,8 @@ export interface DeadlineSource {
   ruleSummary: string;
   citation: string;
   url: string;
+  /** Further primary sources the calculation relies on (absent on older rows). */
+  references?: { label: string; url: string }[];
   /** Calendar date the rule text was last checked against the source. */
   checkedOn: string;
   caveats: string;

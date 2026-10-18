@@ -101,10 +101,13 @@ const jobSeparation: NavigatorDef = {
       help: "A letter from the plan explaining how to keep your coverage and by when.",
     },
     {
-      id: "cobra_notice_date",
-      label: "What date is on the COBRA election notice?",
+      // Not "the date printed on the notice": the federal election period runs
+      // from the date the notice is PROVIDED, which can differ from the letter's date.
+      id: "cobra_notice_provided_date",
+      label: "On what date was the COBRA election notice provided to you?",
       type: "date",
       showIf: { questionId: "cobra_notice_received", equals: true },
+      help: "The date it was actually sent or given to you — the postmark, the email's sent date, or the day it was handed to you. That can differ from the date printed on the letter. If you only have the printed date or aren't sure, leave this blank: the deadline stays NEEDS VERIFICATION, and the deadline stated in the notice is the one to act on.",
     },
     {
       id: "severance_offered",
@@ -124,10 +127,10 @@ const jobSeparation: NavigatorDef = {
     },
     {
       id: "ra_determination_mailed_date",
-      label: "What mailing (distribution) date is printed on the determination notice?",
+      label: "What is the distributed date on the determination?",
       type: "date",
       showIf: { questionId: "filed_unemployment", equals: "denied" },
-      help: "The appeal period runs from this date — not from your last day of work. Leave blank if you don't have the notice in front of you; you can add it later.",
+      help: "FloridaCommerce counts the 20-day appeal period from the determination's distributed date, shown on the determination — not from your last day of work or the day you opened it. Leave blank if you don't have the determination in front of you; you can add it later.",
     },
     {
       id: "documents_on_hand",
@@ -210,7 +213,7 @@ const jobSeparation: NavigatorDef = {
       fields: [
         { id: "agency", label: "Appeals office name / address (from your notice)", multiline: true, placeholder: "Copy this exactly from the determination notice" },
         { id: "claimant_id", label: "Claimant ID (from your notice)", placeholder: "Do not enter a Social Security number" },
-        { id: "determination_date", label: "Mailing date on the determination", fromAnswer: "ra_determination_mailed_date" },
+        { id: "determination_date", label: "Distributed date on the determination", fromAnswer: "ra_determination_mailed_date" },
         { id: "issue_number", label: "Issue / determination number (from your notice)" },
         { id: "reasons", label: "Why you disagree", multiline: true, placeholder: "State the facts briefly and plainly. Attach supporting documents if your notice allows." },
         { id: "contact", label: "Your mailing address, phone, and email", multiline: true },
@@ -271,7 +274,7 @@ const jobSeparation: NavigatorDef = {
       plan.nextActions.push({
         title: "Appeal the unemployment determination before the date on your notice",
         detail: inPilot
-          ? "In Florida a determination becomes final unless you appeal within 20 days after the notice was mailed (Fla. Stat. § 443.151). The exact deadline and how to file are printed on your notice — that notice controls."
+          ? "FloridaCommerce requires an appeal within 20 calendar days after the determination's distributed date; if the 20th day is a Saturday, Sunday, or legal holiday, the last day is the next business day (Fla. Admin. Code R. 73B-20.005). The deadline and how to file are printed on your determination — it controls."
           : `Your notice states the appeal deadline and how to file. BureauOS doesn't have verified appeal rules for ${stateName} yet, so read the notice today.`,
       });
       plan.deadlines.push(
@@ -290,7 +293,7 @@ const jobSeparation: NavigatorDef = {
         detail: "Unemployment appeal deadlines are strict and are counted from the notice, not from when you read it. A late appeal is usually dismissed.",
         severity: "critical",
       });
-      plan.extraDocuments.push({ name: "Unemployment determination notice", required: true, description: "The stated reason determines your appeal argument, and the mailing date starts the appeal period." });
+      plan.extraDocuments.push({ name: "Unemployment determination notice", required: true, description: "The stated reason determines your appeal argument, and its distributed date starts the appeal period." });
     } else {
       plan.nextActions.push({
         title: "Keep requesting your benefit payments on schedule",

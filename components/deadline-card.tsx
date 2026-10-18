@@ -142,6 +142,23 @@ export function DeadlineCard({ deadline, caseTitle, onToggleVerified, onSetTrigg
                 </a>{" "}
                 · source checked {formatDateOnly(deadline.source.checkedOn)}
               </p>
+              {deadline.source.references && deadline.source.references.length > 0 && (
+                <ul className="space-y-0.5">
+                  {deadline.source.references.map((ref) => (
+                    <li key={ref.url}>
+                      <a
+                        href={ref.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-primary underline underline-offset-2"
+                      >
+                        {ref.label}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
               <p>{deadline.source.caveats}</p>
             </div>
           </details>
