@@ -1,13 +1,14 @@
-# BureauOS — Production Readiness (Job Separation launch)
+# Building202 — Production Readiness (Job Separation launch)
 
-Updated: 2026-10-18 · Branch `launch/job-separation-pilot`
+Updated: 2026-10-18 · Branches `launch/job-separation-pilot`, `brand/building202`
 
 **Status: NOT cleared for real paying customers.** The engineering work in this
 repository is complete and verified. Launch is blocked on owner-side items that
 no code change can supply: a Stripe account and an end-to-end live-mode test,
 hosted PostgreSQL with backups, an email provider, production secrets and staff
-accounts, and attorney review of the deadline rules and legal pages. Each is
-listed with its exact action in [Launch blockers](#launch-blockers).
+accounts, attorney review of the deadline rules and legal pages, the
+building202.com domain and hosting, and trademark clearance for the Building202
+name. Each is listed with its exact action in [Launch blockers](#launch-blockers).
 
 `docs/bureauos_mvp_audit.md` (July 2026) and `docs/backend_migration_plan.md` are
 historical. Their findings were revalidated against current code, and this
@@ -64,13 +65,15 @@ These need the owner. Each is genuinely external to the code.
 
 | # | Blocker | What to do | How to confirm |
 |---|---|---|---|
-| 1 | **Stripe account + live verification** | Create the account; create a restricted key with Checkout Sessions write. Add a webhook endpoint `https://<domain>/api/stripe/webhook` with events `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed`. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | On staging (`BUREAUOS_STRIPE_ALLOW_TEST_MODE=true`, test keys): buy with card 4242…, see `/checkout/return` confirm, letters unlock, a refund in the Dashboard re-locks. Then one real low-value live purchase and refund |
+| 1 | **Stripe account + live verification** | Create the account; create a restricted key with Checkout Sessions write. Set the account's public business name and statement descriptor to Building202. Add a webhook endpoint `https://building202.com/api/stripe/webhook` (once the domain is live) with events `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed`. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | On staging (`BUREAUOS_STRIPE_ALLOW_TEST_MODE=true`, test keys): buy with card 4242…, see `/checkout/return` confirm, letters unlock, a refund in the Dashboard re-locks. Then one real low-value live purchase and refund |
 | 2 | **Hosted PostgreSQL** | Managed Postgres with TLS, encryption at rest, and point-in-time recovery. Set `DATABASE_URL=postgresql://…?sslmode=require`; deploy runs `npm run build` (generates the Postgres client), then `npm run db:migrate` | `/api/health` → `database: connected`; a restore drill (below) completed once |
-| 3 | **Email (Resend)** | Verify a sending domain; set `RESEND_API_KEY`, `EMAIL_FROM` | Welcome email arrives; `/forgot-password` sends a working link; Settings → Notifications shows "Emailed" |
+| 3 | **Email (Resend)** | Verify building202.com in Resend (SPF/DKIM records), choose a sender address on it, set `RESEND_API_KEY` and `EMAIL_FROM="Building202 <that address>"`. No sender address exists yet | Welcome email arrives; `/forgot-password` sends a working link; Settings → Notifications shows "Emailed" |
 | 4 | **Scheduler** | Call `GET /api/internal/notifications` every 15 minutes with `Authorization: Bearer $CRON_SECRET` (≥16 random chars) | Response `ok: true`; a deadline 3 days out produces a reminder |
-| 5 | **Production configuration** | `AUTH_SECRET` (`openssl rand -hex 32`), `BUREAUOS_APP_URL=https://…` (also at **build** time — it enables HSTS), `BUREAUOS_TRUSTED_PROXY_HOPS` for the host, `UPSTASH_REDIS_REST_URL/TOKEN` for shared rate limits on serverless/multi-instance hosting | Sign-in works over https; cross-origin POSTs get 403 |
+| 5 | **Production configuration** | `AUTH_SECRET` (`openssl rand -hex 32`), `BUREAUOS_APP_URL=https://building202.com` and `AUTH_URL=https://building202.com` (also at **build** time — it enables HSTS), `BUREAUOS_TRUSTED_PROXY_HOPS` for the host, `UPSTASH_REDIS_REST_URL/TOKEN` for shared rate limits on serverless/multi-instance hosting | Sign-in works over https; cross-origin POSTs get 403 |
 | 6 | **Staff accounts** | `DATABASE_URL=<prod> npm run admin:provision -- --email … --name …` per operator; enroll TOTP immediately | Staff sign-in requires the code |
 | 7 | **Attorney review** | Review the three deadline rules (`lib/deadline-rules.ts`, `lib/jurisdictions.ts`), including the Florida holiday calendar (`lib/holidays.ts`) and the COBRA "date provided" question wording, the letter templates (`lib/server/letters.ts`), and the Terms / Privacy / Disclaimer drafts. Decide: business entity and contact address, Case Pass refund window, governing law and dispute resolution, named hosting/DB providers, payment-record retention period | Remove the "Draft — pending attorney review" notices (`components/legal-draft-notice.tsx`); bump `DISCLAIMER_VERSION` |
+| 8 | **Domain and hosting** | Register building202.com, point DNS at the host, issue TLS, and redirect `www.` to the bare domain (the origin check accepts exactly one origin). Not yet done — nothing in the code assumes it is | `https://building202.com/api/health` returns `ok`; `/robots.txt` and page canonical tags show building202.com |
+| 9 | **Trademark clearance** | Clear "Building202" for use in this market (search and, if wanted, registration) before public launch. No search or registration has been done | Counsel's written clearance |
 
 ## Remaining issues (not blocking a controlled pilot, but tracked)
 
@@ -108,12 +111,12 @@ Commit both; CI applies the Postgres one to a real server.
 
 **Backups and restore drill** (do once before launch, then quarterly):
 1. Enable the provider's point-in-time recovery, plus a nightly logical backup:
-   `pg_dump --format=custom --no-owner "$DATABASE_URL" > bureauos-$(date +%F).dump`,
+   `pg_dump --format=custom --no-owner "$DATABASE_URL" > building202-$(date +%F).dump`,
    stored encrypted, off the database host.
 2. Restore into a scratch database:
-   `createdb bureauos_restore_verify && pg_restore --no-owner -d bureauos_restore_verify bureauos-<date>.dump`.
+   `createdb building202_restore_verify && pg_restore --no-owner -d building202_restore_verify building202-<date>.dump`.
 3. Check schema integrity:
-   `npx prisma migrate diff --from-url postgresql://…/bureauos_restore_verify --to-schema-datamodel prisma/postgres/schema.prisma --exit-code`.
+   `npx prisma migrate diff --from-url postgresql://…/building202_restore_verify --to-schema-datamodel prisma/postgres/schema.prisma --exit-code`.
 4. Point a staging instance at it and check `/api/health`, a sign-in, and a case
    page. Record the date and the restore time. Drop the scratch database.
 
@@ -130,6 +133,29 @@ session id, then the Stripe Dashboard's event delivery for
 `checkout.session.completed`. Redelivering from Stripe is safe (idempotent). If
 the amount didn't match, fulfilment is refused by design and logged: refund, or
 grant manually with a reason.
+
+## Brand and legacy identifiers
+
+The product was renamed from BureauOS to Building202 (branch `brand/building202`). Every
+customer-facing surface says Building202. The terms acceptance version moved to
+`2026-10-18.v3`, so acceptance records stay tied to the text accepted: v2 rows were accepted under
+the BureauOS name. These internal identifiers keep the old spelling **on purpose**:
+
+| Identifier | Where | Why it stays |
+|---|---|---|
+| `BUREAUOS_*` environment variables (`APP_URL`, `TRUSTED_PROXY_HOPS`, `REQUIRE_STAFF_MFA`, `STRIPE_ALLOW_TEST_MODE`, `CASE_PASS_PRICE_CENTS`, `HUMAN_REVIEW_ENABLED`, `RETAIN_*`) | `.env.example`, `lib/server/*`, `next.config.mjs` | Renaming silently unsets every deployment's configuration |
+| `bureauos-checkout-<purchase>` | Stripe Checkout idempotency key (`lib/server/payments.ts`) | A retry spanning a deploy must send the same key, or Stripe creates a second session |
+| `bureauos-notification-<id>` | Resend idempotency key (`lib/server/notify.ts`) | Same: a retried email must not be delivered twice |
+| `bureauos:rl:` | Upstash rate-limit key prefix | Renaming resets every live rate-limit window |
+| `[bureauos]` | Server log tag | Log searches and alerts match on it; not shown to customers |
+| `"service": "bureauos"` | `/api/health` response | Uptime monitors may match on it; machine-facing |
+| `demo@bureauos.app`, `admin@bureauos.app`, password `bureau-demo` | Development demo accounts (`lib/constants.ts`) | Tests and existing development databases use them; refused at sign-in in production |
+| `useBureauStore`, `BureauState` | Client store (`lib/store.ts`) | Internal API used across the UI |
+| `bureauos` | npm package name (`package.json`, `package-lock.json`), GitHub repository, `.claude/launch.json` | Not customer-facing; matches the repository |
+| `bureauos_test`, `bureauos-test`, `bureauos-migration-` | CI test database, temp directories | Tooling only |
+
+`docs/bureauos_mvp_audit.md` and `docs/backend_migration_plan.md` keep the old name as historical
+records.
 
 ## Security ledger
 
