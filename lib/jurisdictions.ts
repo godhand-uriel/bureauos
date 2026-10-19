@@ -224,7 +224,7 @@ export const JURISDICTION_RULES: JurisdictionRule[] = [
     category: "Final wages",
     title: "Final paycheck timing in Florida",
     summary:
-      "BureauOS did not find a Florida statute that sets a separate deadline for a final paycheck. Federal law does not require an employer to pay final wages immediately; the U.S. Department of Labor's guidance is to act once the regular payday for your last pay period has passed without payment.",
+      "Building202 did not find a Florida statute that sets a separate deadline for a final paycheck. Federal law does not require an employer to pay final wages immediately; the U.S. Department of Labor's guidance is to act once the regular payday for your last pay period has passed without payment.",
     deadlineType: "Reference date",
     deadlineDetail: "The regular payday for the last pay period you worked — a date only you and your employer know.",
     requiredDocuments: ["Final pay stub (or note that none was issued)", "Your own record of hours and pay owed", "Employer PTO policy, if you expect a payout"],
@@ -302,7 +302,7 @@ export const JURISDICTION_RULES: JurisdictionRule[] = [
  * Only `source_checked` rules are ever returned — unverified samples stay in
  * the file as content to validate later and are never presented as guidance.
  * Federal rules are included only when the case's state is in the launch
- * pilot, so a state BureauOS has not validated gets no jurisdiction notes at
+ * pilot, so a state Building202 has not validated gets no jurisdiction notes at
  * all rather than a partial picture.
  */
 export function rulesForCase(navigatorSlug: string, stateAnswer: unknown): JurisdictionRule[] {

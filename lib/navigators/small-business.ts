@@ -136,7 +136,7 @@ const smallBusiness: NavigatorDef = {
     },
   ],
   disclaimer:
-    "BureauOS helps you organize compliance obligations and deadlines. It is not legal, tax, or accounting advice. Requirements vary by state, county, city, and industry — verify each obligation with the relevant agency or a professional.",
+    "Building202 helps you organize compliance obligations and deadlines. It is not legal, tax, or accounting advice. Requirements vary by state, county, city, and industry — verify each obligation with the relevant agency or a professional.",
   buildPlan: (a): PlanResult => {
     const stage = a.business_stage as string;
     const entity = (a.entity_type as string) || "unsure";

@@ -3,7 +3,7 @@ import { isPilotState } from "@/lib/deadline-rules";
 import { normalizeUsState, US_STATES } from "@/lib/us-states";
 
 /**
- * Job Separation Navigator — BureauOS's first commercially launched navigator.
+ * Job Separation Navigator — Building202's first commercially launched navigator.
  *
  * Deadline discipline (see lib/deadline-rules.ts): unemployment appeals, final
  * pay, COBRA and Marketplace enrollment each run from a DIFFERENT event. None
@@ -221,7 +221,7 @@ const jobSeparation: NavigatorDef = {
     },
   ],
   disclaimer:
-    "BureauOS helps you organize your separation, prepare filings, and track deadlines. It is not legal or financial advice. Deadlines are calculated only from dates you provide and rules checked against the cited sources — the date printed on your official notice always controls. Verify with the agency or a qualified professional.",
+    "Building202 helps you organize your separation, prepare filings, and track deadlines. It is not legal or financial advice. Deadlines are calculated only from dates you provide and rules checked against the cited sources — the date printed on your official notice always controls. Verify with the agency or a qualified professional.",
   buildPlan: (a): PlanResult => {
     const type = a.separation_type as string;
     const state = normalizeUsState(a.state);
@@ -275,7 +275,7 @@ const jobSeparation: NavigatorDef = {
         title: "Appeal the unemployment determination before the date on your notice",
         detail: inPilot
           ? "FloridaCommerce requires an appeal within 20 calendar days after the determination's distributed date; if the 20th day is a Saturday, Sunday, or legal holiday, the last day is the next business day (Fla. Admin. Code R. 73B-20.005). The deadline and how to file are printed on your determination — it controls."
-          : `Your notice states the appeal deadline and how to file. BureauOS doesn't have verified appeal rules for ${stateName} yet, so read the notice today.`,
+          : `Your notice states the appeal deadline and how to file. Building202 doesn't have verified appeal rules for ${stateName} yet, so read the notice today.`,
       });
       plan.deadlines.push(
         inPilot
@@ -284,7 +284,7 @@ const jobSeparation: NavigatorDef = {
               kind: "official_unavailable",
               key: "unemployment-appeal",
               title: "Appeal the unemployment determination",
-              note: `Not calculated: BureauOS has no verified appeal rule for ${stateName}. The deadline is printed on your determination notice.`,
+              note: `Not calculated: Building202 has no verified appeal rule for ${stateName}. The deadline is printed on your determination notice.`,
             },
       );
       plan.suggestedLetterTemplateId = "unemployment-appeal-statement";
@@ -306,8 +306,8 @@ const jobSeparation: NavigatorDef = {
       plan.nextActions.push({
         title: "Send a final paycheck follow-up",
         detail: inPilot
-          ? "BureauOS did not find a Florida law setting a separate final-paycheck deadline, so the reference point is the regular payday for your last pay period. If that payday has passed, put your request in writing; the U.S. Department of Labor's Wage and Hour Division takes unpaid-wage complaints."
-          : `Many states set their own final-paycheck deadline. BureauOS hasn't verified ${stateName}'s rule — check with your state labor department. Either way, put your request in writing.`,
+          ? "Building202 did not find a Florida law setting a separate final-paycheck deadline, so the reference point is the regular payday for your last pay period. If that payday has passed, put your request in writing; the U.S. Department of Labor's Wage and Hour Division takes unpaid-wage complaints."
+          : `Many states set their own final-paycheck deadline. Building202 hasn't verified ${stateName}'s rule — check with your state labor department. Either way, put your request in writing.`,
       });
       if (plan.suggestedLetterTemplateId === undefined) {
         plan.suggestedLetterTemplateId = "final-paycheck-followup";
@@ -323,7 +323,7 @@ const jobSeparation: NavigatorDef = {
           kind: "official_unavailable",
           key: "final-pay",
           title: "State final-paycheck deadline",
-          note: `Not calculated: ${stateName} may set a specific deadline for final wages, which BureauOS has not verified. Check with your state labor department.`,
+          note: `Not calculated: ${stateName} may set a specific deadline for final wages, which Building202 has not verified. Check with your state labor department.`,
         });
       }
       plan.riskFlags.push({
@@ -353,7 +353,7 @@ const jobSeparation: NavigatorDef = {
           note: !inPilot
             ? `Not calculated: deadline calculation is not available for ${stateName} yet. Your election notice states the deadline.`
             : employerSize === "under_20"
-              ? "Not calculated: federal COBRA generally applies to employers with 20 or more employees. A smaller Florida employer may fall under Florida's state continuation law instead, which BureauOS has not verified. Ask the insurer or plan administrator for your election deadline."
+              ? "Not calculated: federal COBRA generally applies to employers with 20 or more employees. A smaller Florida employer may fall under Florida's state continuation law instead, which Building202 has not verified. Ask the insurer or plan administrator for your election deadline."
               : "Not calculated: whether federal COBRA applies depends on employer size (generally 20 or more employees). Confirm with HR or the plan administrator — your election notice states the deadline.",
         });
       }

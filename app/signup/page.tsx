@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Landmark, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { StoreSeeder } from "@/components/store-seeder";
 import { useBureauStore } from "@/lib/store";
 import { safeNextPath } from "@/lib/safe-next";
 import { US_STATES } from "@/lib/us-states";
+import { BrandWordmark } from "@/components/brand-wordmark";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -41,14 +42,7 @@ export default function SignupPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
       <StoreSeeder />
-      <Link href="/" className="mb-8 flex items-center gap-2.5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Landmark className="h-5 w-5" />
-        </div>
-        <span className="text-xl font-bold tracking-tight">
-          Bureau<span className="text-primary">OS</span>
-        </span>
-      </Link>
+      <BrandWordmark size="lg" className="mb-8" />
 
       <Card className="w-full max-w-md">
         <CardContent className="p-6 sm:p-8">
@@ -95,7 +89,7 @@ export default function SignupPage() {
             <Link href="/legal/terms" className="text-primary hover:underline">Terms</Link>,{" "}
             <Link href="/legal/privacy" className="text-primary hover:underline">Privacy Policy</Link>, and{" "}
             <Link href="/legal/disclaimer" className="text-primary hover:underline">Legal Disclaimer</Link>.
-            BureauOS is not a law firm and does not provide legal advice.
+            Building202 is not a law firm and does not provide legal advice.
           </p>
 
           <p className="mt-4 text-center text-sm text-muted-foreground">

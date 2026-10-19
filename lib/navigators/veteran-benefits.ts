@@ -148,7 +148,7 @@ const veteranBenefits: NavigatorDef = {
     },
   ],
   disclaimer:
-    "BureauOS helps you organize records, appointments, and deadlines for your VA benefits journey. It is not legal advice and is not affiliated with the VA. For claim strategy, work with an accredited VSO, agent, or attorney — VSO help is free.",
+    "Building202 helps you organize records, appointments, and deadlines for your VA benefits journey. It is not legal advice and is not affiliated with the VA. For claim strategy, work with an accredited VSO, agent, or attorney — VSO help is free.",
   buildPlan: (a): PlanResult => {
     const categories = (a.benefit_categories as string[]) || [];
     const stage = (a.claim_stage as string) || "exploring";
@@ -196,7 +196,7 @@ const veteranBenefits: NavigatorDef = {
         { title: "Complete the evidence file per condition", detail: "For each condition: current diagnosis, in-service event or exposure, and a link between them. Buddy statements can fill gaps in service records." },
         { title: hasVso ? "File through your VSO" : "Engage a VSO before filing", detail: hasVso ? "Review the complete package with your VSO and file. Keep copies of every page submitted." : "An accredited VSO will strengthen and file the claim free of charge — worth the short wait to engage one." },
       ];
-      plan.deadlines.push({ kind: "official_unavailable", key: "itf-window", title: "Intent to File — completion window", note: "Not calculated: the window runs from the date VA receives your Intent to File, which BureauOS does not have. Use the date on your VA confirmation and verify the window with VA or your VSO." });
+      plan.deadlines.push({ kind: "official_unavailable", key: "itf-window", title: "Intent to File — completion window", note: "Not calculated: the window runs from the date VA receives your Intent to File, which Building202 does not have. Use the date on your VA confirmation and verify the window with VA or your VSO." });
       if (!inTreatment) {
         plan.riskFlags.push({ label: "No current treatment", detail: "Claims need current diagnoses. If you're not in treatment for a claimed condition, get seen — VA health care or a private provider — before or right after filing.", severity: "warning" });
         plan.extraTasks.push({ title: "Get current medical documentation", description: "Schedule an exam for each claimed condition so there's a recent diagnosis on record.", category: "Evidence", dueInDays: 21 });
@@ -219,7 +219,7 @@ const veteranBenefits: NavigatorDef = {
         { title: "Pick the review lane with your VSO", detail: "New evidence available → Supplemental Claim. VA made an error on existing evidence → Higher-Level Review. Complex disputes → Board Appeal." },
       ];
       if (typeof a.decision_date === "string" && a.decision_date) {
-        plan.deadlines.push({ kind: "official_unavailable", key: "decision-review", title: "Decision review deadline", note: `Not calculated: BureauOS has no verified rule for this navigator yet. You entered a decision date of ${a.decision_date}; the review deadline is stated on the decision letter — verify it there or with your VSO.` });
+        plan.deadlines.push({ kind: "official_unavailable", key: "decision-review", title: "Decision review deadline", note: `Not calculated: Building202 has no verified rule for this navigator yet. You entered a decision date of ${a.decision_date}; the review deadline is stated on the decision letter — verify it there or with your VSO.` });
       } else {
         plan.deadlines.push({ kind: "official_unavailable", key: "decision-review", title: "Decision review deadline", note: "Not established: find the date on your decision letter. The review deadline is stated there." });
       }

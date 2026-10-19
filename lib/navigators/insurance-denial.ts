@@ -146,7 +146,7 @@ const insuranceDenial: NavigatorDef = {
     },
   ],
   disclaimer:
-    "BureauOS helps you organize your denial, evidence, and deadlines. It is not legal advice and cannot guarantee an appeal outcome. Appeal rights and deadlines vary by policy and state — verify them on your denial letter and policy, and consider your state insurance department's free consumer help line.",
+    "Building202 helps you organize your denial, evidence, and deadlines. It is not legal advice and cannot guarantee an appeal outcome. Appeal rights and deadlines vary by policy and state — verify them on your denial letter and policy, and consider your state insurance department's free consumer help line.",
   buildPlan: (a): PlanResult => {
     const type = (a.insurance_type as string) || "other";
     const reason = (a.denial_reason as string) || "other";
@@ -187,7 +187,7 @@ const insuranceDenial: NavigatorDef = {
         { title: "File a complaint with your state insurance department", detail: "State insurance regulators take consumer complaints seriously and insurers respond to them. It's free and can run in parallel with external review." },
         { title: "Assemble the complete record", detail: "Every letter, denial, appeal, and call note in chronological order — external reviewers decide on the written record." },
       ];
-      plan.deadlines.push({ kind: "official_unavailable", key: "external-review-window", title: "External review request window", note: "BureauOS has no verified rule for this window. It is stated on your final denial letter — find it there." });
+      plan.deadlines.push({ kind: "official_unavailable", key: "external-review-window", title: "External review request window", note: "Building202 has no verified rule for this window. It is stated on your final denial letter — find it there." });
     } else {
       plan.nextActions = [
         { title: "Pin down the appeal deadline", detail: deadlineKnown ? "You have the stated deadline — put every step on a schedule that finishes at least a week before it." : "Read the denial letter and your policy for the appeal window (often 180 days for health plans, shorter for others). If it's not stated, call and get it with a reference number." },

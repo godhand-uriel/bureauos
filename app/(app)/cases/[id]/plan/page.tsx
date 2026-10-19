@@ -64,7 +64,7 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
     <div className="mx-auto max-w-3xl space-y-6">
       {nav?.launchStatus === "preview" && (
         <Callout variant="warning" title="Preview navigator">
-          This navigator offers general organizing tools only. BureauOS has not validated
+          This navigator offers general organizing tools only. Building202 has not validated
           state-specific rules or deadlines for it, so any deadline here is either a date you
           entered or marked as needing verification.
         </Callout>

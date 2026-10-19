@@ -208,7 +208,7 @@ function DataCard({ isAdmin, caseCount }: { isAdmin: boolean; caseCount: number 
           Your data
         </CardTitle>
         <CardDescription>
-          {caseCount} case{caseCount === 1 ? "" : "s"} in this account. BureauOS stores what you type
+          {caseCount} case{caseCount === 1 ? "" : "s"} in this account. Building202 stores what you type
           into it — it does not store uploaded documents.
         </CardDescription>
       </CardHeader>
@@ -312,7 +312,7 @@ export default function SettingsPage() {
             <BellRing className="h-4 w-4 text-primary" />
             Notifications
           </CardTitle>
-          <CardDescription>Choose which emails BureauOS sends you.</CardDescription>
+          <CardDescription>Choose which emails Building202 sends you.</CardDescription>
         </CardHeader>
         <CardContent>
           <Link href="/settings/notifications">
@@ -365,8 +365,8 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      <Callout variant="info" title="About BureauOS">
-        BureauOS helps you organize information and prepare next steps for bureaucratic processes.
+      <Callout variant="info" title="About Building202">
+        Building202 helps you organize information and prepare next steps for bureaucratic processes.
         It is self-service software, not a law firm: it does not provide legal, tax, or financial
         advice, and it is not affiliated with any government agency.
       </Callout>

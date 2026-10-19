@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 /**
- * File uploads are not offered. BureauOS has no document storage: earlier
+ * File uploads are not offered. Building202 has no document storage: earlier
  * versions recorded a file's name and size without the file itself, which
  * read as an upload when nothing had been stored. That is switched off rather
  * than left looking functional.

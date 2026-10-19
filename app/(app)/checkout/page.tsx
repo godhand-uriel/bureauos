@@ -191,7 +191,7 @@ function Checkout() {
                 Continue to secure payment — {price}
               </Button>
               <p className="text-center text-xs leading-relaxed text-muted-foreground">
-                You&apos;ll pay on a page hosted by Stripe. BureauOS never sees or stores your card
+                You&apos;ll pay on a page hosted by Stripe. Building202 never sees or stores your card
                 details. By purchasing you agree to the{" "}
                 <Link href="/legal/terms" target="_blank" className="text-primary underline underline-offset-2">
                   Terms of Service

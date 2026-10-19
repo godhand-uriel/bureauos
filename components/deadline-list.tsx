@@ -10,7 +10,7 @@ const GROUPS: { kind: Deadline["kind"]; heading: string; blurb: string }[] = [
     kind: "official",
     heading: "Official deadlines",
     blurb:
-      "Calculated only from a rule checked against the cited source and a date you provided. Anything BureauOS could not establish says NEEDS VERIFICATION — it is never estimated.",
+      "Calculated only from a rule checked against the cited source and a date you provided. Anything Building202 could not establish says NEEDS VERIFICATION — it is never estimated.",
   },
   {
     kind: "self_reported",

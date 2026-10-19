@@ -7,7 +7,7 @@ import { addDays, dateOnlyFromStored, dateOnlyToUtcNoon, diffDays, formatDateOnl
  * Deadline reminder emails.
  *
  * Only dated official and self-reported deadlines get reminders — never a
- * BureauOS "suggested" target (not a legal deadline) and never one marked
+ * Building202 "suggested" target (not a legal deadline) and never one marked
  * NEEDS VERIFICATION (there is no date to count to). A reminder goes out at
  * 7, 3 and 1 days before, and on the day. Each one is queued at most once per
  * deadline, date and threshold (dedupe key), so the runner can call this as
@@ -47,7 +47,7 @@ export async function queueDeadlineReminders(today = todayUtc()): Promise<number
     const subject = daysLeft === 0 ? `Due today: ${d.title}` : `Coming up ${when}: ${d.title}`;
     const source =
       d.kind === "official"
-        ? "BureauOS calculated this date from a date you entered and the rule shown on the deadline. The date printed on your official notice always controls."
+        ? "Building202 calculated this date from a date you entered and the rule shown on the deadline. The date printed on your official notice always controls."
         : "This is the date you entered from your own notice or records.";
     const body = [
       `Your case "${d.case.title}" has a deadline ${when}:`,

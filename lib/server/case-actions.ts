@@ -88,7 +88,7 @@ export async function performCaseAction(
             create: {
               type: "status_change",
               title: `Status changed to ${action.status.replace(/_/g, " ")}`,
-              detail: actorIsStaff ? "Updated by BureauOS staff." : null,
+              detail: actorIsStaff ? "Updated by Building202 staff." : null,
               date: now,
             },
           },
@@ -100,7 +100,7 @@ export async function performCaseAction(
             existing.userId,
             "case_status",
             `Case update: ${existing.title}`,
-            `Status changed to ${action.status.replace(/_/g, " ")} by the BureauOS team.`,
+            `Status changed to ${action.status.replace(/_/g, " ")} by the Building202 team.`,
           )),
         );
         await writeAudit(user, "case.set_status", "case", caseId, `${existing.status} → ${action.status}`, caseId);
@@ -417,7 +417,7 @@ export async function performCaseAction(
       }
       await staffGrantCasePass(caseId, existing.userId);
       await prisma.timelineEvent.create({
-        data: { caseId, type: "note", title: "Case Pass granted by BureauOS staff", date: now },
+        data: { caseId, type: "note", title: "Case Pass granted by Building202 staff", date: now },
       });
       await writeAudit(user, "case.grant_case_pass", "case", caseId, `Staff grant: ${action.reason}`, caseId);
       break;
@@ -429,7 +429,7 @@ export async function performCaseAction(
         return { ok: false, status: 409, error: "This case has no active Case Pass." };
       }
       await prisma.timelineEvent.create({
-        data: { caseId, type: "note", title: "Case Pass removed by BureauOS staff", date: now },
+        data: { caseId, type: "note", title: "Case Pass removed by Building202 staff", date: now },
       });
       await writeAudit(user, "case.revoke_case_pass", "case", caseId, `Staff revoke: ${action.reason}`, caseId);
       break;

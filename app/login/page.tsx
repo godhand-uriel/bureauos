@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Landmark, LogIn, ShieldCheck, UserRound } from "lucide-react";
+import { LogIn, ShieldCheck, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { StoreSeeder } from "@/components/store-seeder";
 import { useBureauStore, DEMO_CUSTOMER_EMAIL, DEMO_PASSWORD } from "@/lib/store";
 import { safeNextPath } from "@/lib/safe-next";
+import { BrandWordmark } from "@/components/brand-wordmark";
 
 /** Demo sign-in surfaces are compiled out of production builds entirely;
  *  the server additionally refuses demo-account credentials in production. */
@@ -54,14 +55,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
       <StoreSeeder />
-      <Link href="/" className="mb-8 flex items-center gap-2.5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Landmark className="h-5 w-5" />
-        </div>
-        <span className="text-xl font-bold tracking-tight">
-          Bureau<span className="text-primary">OS</span>
-        </span>
-      </Link>
+      <BrandWordmark size="lg" className="mb-8" />
 
       <Card className="w-full max-w-md">
         <CardContent className="p-6 sm:p-8">

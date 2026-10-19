@@ -56,7 +56,7 @@ export async function PATCH(request: Request) {
  * answers, plans, deadlines, letters, tickets, acceptances, notifications and
  * entitlements are removed (database cascades from User). What remains:
  *  - Purchase rows, with the user and case links nulled — financial records
- *    BureauOS must keep, no longer attributable to a person from our side
+ *    Building202 must keep, no longer attributable to a person from our side
  *    (Stripe holds its own records under its own retention rules).
  *  - Audit entries about staff actions, which reference ids only.
  * Staff accounts are not self-deletable: removing an operator is an

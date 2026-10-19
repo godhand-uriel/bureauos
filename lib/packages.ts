@@ -9,20 +9,20 @@ import type { ServiceTierDef, ServiceTierId } from "@/lib/types";
  * (lib/server/commerce.ts). They carry no price — pricing a human service is
  * a decision for when it is actually staffed.
  *
- * The one thing BureauOS sells today is the per-case Case Pass, which is an
+ * The one thing Building202 sells today is the per-case Case Pass, which is an
  * entitlement (lib/launch.ts, lib/server/payments.ts), not a tier.
  */
 export const SERVICE_TIERS: ServiceTierDef[] = [
   {
     id: "self_service",
     name: "Self-Service",
-    tagline: "Organize your case yourself with the BureauOS tools.",
+    tagline: "Organize your case yourself with the Building202 tools.",
     humanAssisted: false,
   },
   {
     id: "assisted_review",
     name: "Assisted Review",
-    tagline: "A structured completeness review of your case file by BureauOS staff.",
+    tagline: "A structured completeness review of your case file by Building202 staff.",
     humanAssisted: true,
   },
   {

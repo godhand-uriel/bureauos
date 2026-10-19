@@ -143,7 +143,7 @@ const dmv: NavigatorDef = {
     },
   ],
   disclaimer:
-    "BureauOS helps you organize your DMV situation and prepare next steps. It is not legal advice, and DMV rules vary by state — always verify requirements and deadlines directly with your state DMV.",
+    "Building202 helps you organize your DMV situation and prepare next steps. It is not legal advice, and DMV rules vary by state — always verify requirements and deadlines directly with your state DMV.",
   buildPlan: (a): PlanResult => {
     const issue = a.issue_type as string;
     const suspReason = a.suspension_reason as string | undefined;

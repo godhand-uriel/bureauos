@@ -3,7 +3,7 @@ import { LegalDraftNotice } from "@/components/legal-draft-notice";
 import { DISCLAIMER_VERSION } from "@/lib/constants";
 import { CASE_PASS_NAME } from "@/lib/launch";
 
-export const metadata: Metadata = { title: "Terms of Service" };
+export const metadata: Metadata = { title: "Terms of Service", alternates: { canonical: "/legal/terms" } };
 
 function Section({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
@@ -26,7 +26,7 @@ export default function TermsPage() {
 
       <LegalDraftNotice
         openItems={[
-          "The legal name and contact address of the business offering BureauOS",
+          "The legal name and contact address of the business offering Building202",
           "The refund window and conditions for the Case Pass",
           "Governing law, venue, and how disputes are resolved",
           "Final wording of the warranty disclaimer and limitation of liability",
@@ -34,11 +34,11 @@ export default function TermsPage() {
       />
 
       <section className="space-y-5 text-sm leading-relaxed text-muted-foreground">
-        <Section n={1} title="What BureauOS is">
+        <Section n={1} title="What Building202 is">
           <p>
-            BureauOS is self-service software for organizing a bureaucratic problem: it asks you
+            Building202 is self-service software for organizing a bureaucratic problem: it asks you
             questions, builds a checklist and action plan from fixed rules, tracks dates, and helps
-            you write letters. BureauOS is <strong className="text-foreground">not a law firm</strong>,
+            you write letters. Building202 is <strong className="text-foreground">not a law firm</strong>,
             does not give legal advice, does not represent you, and does not file or send anything on
             your behalf. Using it creates no attorney-client relationship.
           </p>
@@ -61,9 +61,9 @@ export default function TermsPage() {
           <p>
             You are responsible for the accuracy of what you enter, for reviewing and editing every
             letter before you use it, and for checking deadlines and requirements with the agency
-            handling your matter. A deadline shown in BureauOS is calculated only from dates you
+            handling your matter. A deadline shown in Building202 is calculated only from dates you
             entered and the rule it cites; the date printed on your official notice always controls.
-            Where BureauOS cannot establish a date, it says NEEDS VERIFICATION — it does not guess.
+            Where Building202 cannot establish a date, it says NEEDS VERIFICATION — it does not guess.
           </p>
         </Section>
 
@@ -83,7 +83,7 @@ export default function TermsPage() {
 
         <Section n={5} title="Payments and refunds">
           <p>
-            Payments are processed by Stripe on a Stripe-hosted page; BureauOS never receives your
+            Payments are processed by Stripe on a Stripe-hosted page; Building202 never receives your
             card details. The Case Pass becomes active once Stripe confirms the payment. If a payment
             is refunded, or disputed with your card issuer, the Case Pass is removed while that is
             resolved. Letters you already saved stay in your case.
@@ -94,13 +94,13 @@ export default function TermsPage() {
         <Section n={6} title="Services not offered">
           <p>
             Human review of your case, document preparation, and other staffed services are not
-            currently offered, and BureauOS does not store uploaded documents.
+            currently offered, and Building202 does not store uploaded documents.
           </p>
         </Section>
 
         <Section n={7} title="No guarantee of outcome">
           <p>
-            Outcomes depend on facts, agencies, and rules outside BureauOS&apos;s control. BureauOS does
+            Outcomes depend on facts, agencies, and rules outside Building202&apos;s control. Building202 does
             not guarantee eligibility for any benefit or the result of any claim, appeal, or dispute.
           </p>
         </Section>

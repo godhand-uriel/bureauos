@@ -14,6 +14,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { NavigatorIcon } from "@/components/navigator-icon";
 import { PublicShell } from "@/components/public-shell";
 import { NAVIGATORS } from "@/lib/navigators";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 const START_HREF = "/signup?next=%2Fcases%2Fnew%3Fnavigator%3Djob-separation";
 
@@ -54,7 +57,7 @@ const PILLARS = [
   {
     icon: ShieldCheck,
     title: "Honest about what it is",
-    text: "BureauOS is self-service software. It is not a law firm, gives no legal advice, files nothing for you, and promises no outcome.",
+    text: "Building202 is self-service software. It is not a law firm, gives no legal advice, files nothing for you, and promises no outcome.",
   },
 ];
 
@@ -84,7 +87,7 @@ export default function LandingPage() {
             <span className="text-primary">Get organized before the deadlines pass.</span>
           </h1>
           <p className="mt-6 max-w-2xl text-balance text-lg leading-relaxed text-muted-foreground">
-            Unemployment, final pay, and health coverage each run on their own clock. BureauOS turns
+            Unemployment, final pay, and health coverage each run on their own clock. Building202 turns
             a job separation into one organized case: a plan, a document checklist, and deadlines
             tracked from the right dates.
           </p>
@@ -102,7 +105,7 @@ export default function LandingPage() {
             </Link>
           </div>
           <p className="mt-6 max-w-xl text-xs leading-relaxed text-muted-foreground">
-            BureauOS helps you organize information and prepare next steps. It is not a law firm and
+            Building202 helps you organize information and prepare next steps. It is not a law firm and
             does not provide legal advice.
           </p>
         </div>

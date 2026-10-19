@@ -422,7 +422,7 @@ describe("fulfilment", () => {
     expect(await prisma.timelineEvent.count({ where: { caseId: kase.id, title: "Case Pass purchased" } })).toBe(1);
   });
 
-  it("does not fulfil an amount or currency BureauOS did not set", async () => {
+  it("does not fulfil an amount or currency Building202 did not set", async () => {
     configureStripe();
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     for (const override of [{ amount_total: 100 }, { currency: "jpy" }]) {
@@ -548,7 +548,7 @@ describe("refunds and disputes", () => {
     expect((await prisma.purchase.findUniqueOrThrow({ where: { id: p2.purchase.id } })).status).toBe("dispute_lost");
   });
 
-  it("ignores refunds for payments BureauOS has no record of", async () => {
+  it("ignores refunds for payments Building202 has no record of", async () => {
     configureStripe();
     const result = await deliver(
       makeEvent("charge.refunded", { id: "ch_x", object: "charge", payment_intent: "pi_unknown", amount: 2900, amount_refunded: 2900, refunded: true }),

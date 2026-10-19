@@ -122,7 +122,7 @@ describe("transport selection never pretends to send", () => {
   it("uses Resend when both RESEND_API_KEY and EMAIL_FROM are set", () => {
     vi.stubEnv("RESEND_API_KEY", "re_test_unit");
     expect(emailTransport().kind).toBe("mock"); // EMAIL_FROM still missing
-    vi.stubEnv("EMAIL_FROM", "BureauOS <notify@example.com>");
+    vi.stubEnv("EMAIL_FROM", "Building202 <notify@example.com>");
     expect(emailTransport().kind).toBe("live");
   });
 });
@@ -140,7 +140,7 @@ describe("Resend adapter", () => {
       calls.push({ url, init });
       return responses.shift()!;
     }));
-    const t = resendTransport("re_key", "BureauOS <notify@example.com>");
+    const t = resendTransport("re_key", "Building202 <notify@example.com>");
     const msg = { idempotencyKey: "bureauos-notification-abc", to: "a@example.com", subject: "S", text: "T" };
 
     expect(await t.send(msg)).toEqual({ ok: true, providerMessageId: "re_msg_1" });
@@ -149,7 +149,7 @@ describe("Resend adapter", () => {
     expect(headers.Authorization).toBe("Bearer re_key");
     expect(headers["Idempotency-Key"]).toBe("bureauos-notification-abc");
     expect(JSON.parse(String(calls[0].init.body))).toEqual({
-      from: "BureauOS <notify@example.com>", to: ["a@example.com"], subject: "S", text: "T",
+      from: "Building202 <notify@example.com>", to: ["a@example.com"], subject: "S", text: "T",
     });
 
     expect(await t.send(msg)).toMatchObject({ ok: false, retryable: false }); // 422
@@ -387,7 +387,7 @@ describe("password reset", () => {
     const token = tokenFrom(rec.sent, user.email);
     const stored = await prisma.passwordResetToken.findFirstOrThrow({ where: { userId: user.id } });
     expect(stored.tokenHash).not.toContain(token);
-    const email = await prisma.notificationEvent.findFirstOrThrow({ where: { userId: user.id, subject: "Reset your BureauOS password" } });
+    const email = await prisma.notificationEvent.findFirstOrThrow({ where: { userId: user.id, subject: "Reset your Building202 password" } });
     expect(email.body).not.toContain(token);
     expect(email.sensitive).toBe(true);
   });
@@ -405,7 +405,7 @@ describe("password reset", () => {
     expect(verifyPassword("a-brand-new-password", after.passwordHash)).toBe(true);
     expect(after.sessionVersion).toBe(user.sessionVersion + 1);
     expect((await checkCredentials(user.email, "original-password-1")).ok).toBe(false);
-    expect(rec.sent.some((m) => m.to === user.email && m.subject === "Your BureauOS password was reset")).toBe(true);
+    expect(rec.sent.some((m) => m.to === user.email && m.subject === "Your Building202 password was reset")).toBe(true);
 
     // Single use.
     expect((await resetConfirmPOST(json({ token, newPassword: "another-new-password" }))).status).toBe(400);

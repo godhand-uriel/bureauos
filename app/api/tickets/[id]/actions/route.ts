@@ -45,7 +45,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
             ticket.userId,
             "support_update",
             `Reply on: ${ticket.subject}`,
-            "BureauOS support replied to your ticket.",
+            "Building202 support replied to your ticket.",
           )),
         );
         await writeAudit(user, "ticket.staff_reply", "ticket", id, "Staff reply sent", ticket.caseId);

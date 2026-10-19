@@ -43,15 +43,15 @@ export function DisclaimerGate({
           <div>
             <h2 className="font-semibold">Before you {action}</h2>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              A one-time acknowledgement so we&apos;re on the same page about what BureauOS is —
+              A one-time acknowledgement so we&apos;re on the same page about what Building202 is —
               and isn&apos;t.
             </p>
           </div>
         </div>
 
         <div className="space-y-2 rounded-lg border border-border bg-card/50 p-4 text-sm leading-relaxed text-muted-foreground">
-          <p>• BureauOS is <strong className="text-foreground">not a law firm</strong> and does not provide legal advice.</p>
-          <p>• BureauOS helps you organize information, understand common process steps, and prepare next actions.</p>
+          <p>• Building202 is <strong className="text-foreground">not a law firm</strong> and does not provide legal advice.</p>
+          <p>• Building202 helps you organize information, understand common process steps, and prepare next actions.</p>
           <p>• Deadlines and requirements vary by jurisdiction — always verify with official agencies or qualified professionals.</p>
           <p>• Generated letters and plans are starting points you review, edit, and own.</p>
         </div>

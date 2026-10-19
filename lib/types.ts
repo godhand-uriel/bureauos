@@ -1,5 +1,5 @@
 /**
- * BureauOS core domain model.
+ * Building202 core domain model.
  *
  * Persisted entities (Case and everything nested inside it, plus UserSettings)
  * are plain serializable objects stored in the local data layer (localStorage
@@ -83,7 +83,7 @@ export interface DocumentRequirement {
  *                  source-checked rule was applied to the actual triggering
  *                  event; otherwise `date` is null → shown as NEEDS VERIFICATION.
  * - self_reported  a date the user copied from their own notice.
- * - suggested      a BureauOS follow-up target. Not a legal deadline.
+ * - suggested      a Building202 follow-up target. Not a legal deadline.
  */
 export type DeadlineKind = "official" | "self_reported" | "suggested";
 
@@ -254,7 +254,7 @@ export interface ServiceTierDef {
   id: ServiceTierId;
   name: string;
   tagline: string;
-  /** Requires BureauOS staff. Not purchasable; off unless operations enables it. */
+  /** Requires Building202 staff. Not purchasable; off unless operations enables it. */
   humanAssisted: boolean;
 }
 
@@ -547,7 +547,7 @@ export type DeadlineSpec =
   | { kind: "self_reported"; title: string; date: unknown; note?: string }
   /** A source-checked rule; the engine calculates it or marks it NEEDS VERIFICATION. */
   | { kind: "official"; ruleId: string; note?: string }
-  /** A real deadline exists but BureauOS has no verified rule for it — always NEEDS VERIFICATION. */
+  /** A real deadline exists but Building202 has no verified rule for it — always NEEDS VERIFICATION. */
   | { kind: "official_unavailable"; key: string; title: string; note: string };
 
 export interface LetterField {

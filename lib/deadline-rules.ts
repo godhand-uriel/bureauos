@@ -3,7 +3,7 @@ import { addDays, compareDateOnly, formatDateOnly, parseDateOnly, type DateOnly 
 import { floridaRaClosure } from "@/lib/holidays";
 
 /**
- * Registry of official deadline rules BureauOS is willing to calculate.
+ * Registry of official deadline rules Building202 is willing to calculate.
  *
  * A rule exists here only if its text was checked against the cited sources
  * on `sourceCheckedOn`. That is an ENGINEERING SOURCE CHECK — it is not
@@ -90,7 +90,7 @@ export const DEADLINE_RULES: DeadlineRule[] = [
     ],
     sourceCheckedOn: "2026-10-18",
     caveats:
-      "Days are counted from the day after the distributed date. A last day on a weekend, a Florida state holiday (Fla. Stat. § 110.117), or a federal holiday when the Postal Service is closed moves to the next business day. BureauOS cannot know about unscheduled closures — a FloridaCommerce office closure or an emergency order extending deadlines for your area — which can only make the real deadline later. The deadline printed on your notice controls.",
+      "Days are counted from the day after the distributed date. A last day on a weekend, a Florida state holiday (Fla. Stat. § 110.117), or a federal holiday when the Postal Service is closed moves to the next business day. Building202 cannot know about unscheduled closures — a FloridaCommerce office closure or an emergency order extending deadlines for your area — which can only make the real deadline later. The deadline printed on your notice controls.",
   },
   {
     id: "us-cobra-election",
@@ -151,7 +151,7 @@ export function getDeadlineRule(id: string): DeadlineRule | undefined {
   return DEADLINE_RULES.find((r) => r.id === id);
 }
 
-/** States where BureauOS offers state-specific deadline calculation. */
+/** States where Building202 offers state-specific deadline calculation. */
 export const PILOT_STATE_CODES: readonly string[] = ["FL"];
 
 export function isPilotState(code: string | null | undefined): boolean {
@@ -213,7 +213,7 @@ export function computeRuleDeadline(
     const needed = missing.map((t) => lowerFirst(t.label)).join(" and the ");
     return {
       status: "needs_verification",
-      reason: `Not calculated: BureauOS needs the ${needed}. ${missing[0].whyNeeded}`,
+      reason: `Not calculated: Building202 needs the ${needed}. ${missing[0].whyNeeded}`,
       missing: missing[0],
     };
   }

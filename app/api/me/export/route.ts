@@ -21,7 +21,7 @@ import { todayUtc } from "@/lib/dates";
 export const dynamic = "force-dynamic";
 
 /**
- * Download everything BureauOS holds about the signed-in account as one JSON
+ * Download everything Building202 holds about the signed-in account as one JSON
  * file. Only the caller's own rows — an admin gets their own account's data
  * here, not customers'. Excluded by design: the password hash and MFA secret
  * (credentials, not personal data to hand back), staff-only internal notes,
@@ -53,10 +53,10 @@ export async function GET() {
 
   const body = {
     export: {
-      service: "BureauOS",
+      service: "Building202",
       generatedAt: new Date().toISOString(),
       format: 1,
-      note: "Everything BureauOS stores about this account. Passwords and two-factor secrets are never exported. BureauOS does not store uploaded documents.",
+      note: "Everything Building202 stores about this account. Passwords and two-factor secrets are never exported. Building202 does not store uploaded documents.",
     },
     profile,
     cases: cases.map((c) => caseToDomain(c, { includeAdminNotes: false })),
@@ -73,7 +73,7 @@ export async function GET() {
     status: 200,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Content-Disposition": `attachment; filename="bureauos-export-${todayUtc()}.json"`,
+      "Content-Disposition": `attachment; filename="building202-export-${todayUtc()}.json"`,
       "Cache-Control": "no-store",
     },
   });

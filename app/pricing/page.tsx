@@ -8,7 +8,7 @@ import { PublicShell } from "@/components/public-shell";
 import { capabilities } from "@/lib/server/commerce";
 import { CASE_PASS_EXCLUDES, CASE_PASS_INCLUDES, CASE_PASS_NAME, FREE_INCLUDES, formatPrice } from "@/lib/launch";
 
-export const metadata: Metadata = { title: "Pricing" };
+export const metadata: Metadata = { title: "Pricing", alternates: { canonical: "/pricing" } };
 
 // The price is server configuration, read at request time — never a build-time constant.
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ export default function PricingPage() {
             Free to organize your case. {price} if you want the letters.
           </h1>
           <p className="mt-4 text-muted-foreground">
-            BureauOS is self-service software. The plan, deadline tracking, and checklists are free.
+            Building202 is self-service software. The plan, deadline tracking, and checklists are free.
             The only thing for sale is the Job Separation Case Pass — a one-time purchase for one
             case. No subscription.
           </p>
@@ -106,7 +106,7 @@ export default function PricingPage() {
             currently offered.
           </p>
           <p>
-            BureauOS is not a law firm and does not provide legal advice or representation. Nothing
+            Building202 is not a law firm and does not provide legal advice or representation. Nothing
             here guarantees benefits, an appeal result, or any other outcome. Refund terms are in the{" "}
             <Link href="/legal/terms" className="text-primary underline underline-offset-2">Terms of Service</Link>.
           </p>

@@ -6,7 +6,7 @@ import { stripeMode } from "@/lib/server/commerce";
  * STRIPE_WEBHOOK_SECRET are configured (see stripeMode in commerce.ts);
  * callers check that first and fail closed with a 503.
  *
- * BureauOS never sees card data: customers pay on Stripe-hosted Checkout.
+ * Building202 never sees card data: customers pay on Stripe-hosted Checkout.
  */
 
 let cached: { key: string; client: Stripe } | null = null;

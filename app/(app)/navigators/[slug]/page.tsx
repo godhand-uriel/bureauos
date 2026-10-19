@@ -57,7 +57,7 @@ export default async function NavigatorOverviewPage({
         </Callout>
       ) : (
         <Callout variant="warning" title="Preview navigator">
-          This navigator offers general organizing tools only. BureauOS has not verified deadline
+          This navigator offers general organizing tools only. Building202 has not verified deadline
           rules for it, so no official deadline is calculated here — every date is yours to confirm
           with the agency or a qualified professional. Nothing is sold for this navigator.
         </Callout>
@@ -139,7 +139,7 @@ export default async function NavigatorOverviewPage({
         </CardContent>
       </Card>
 
-      <Callout variant="info" title="A note on what BureauOS is">
+      <Callout variant="info" title="A note on what Building202 is">
         {nav.disclaimer}
       </Callout>
     </div>

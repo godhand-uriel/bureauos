@@ -35,8 +35,8 @@ export async function POST(request: Request) {
   await queueNotification(
     user.id,
     "account_security",
-    "Your BureauOS password was changed",
-    "The password for your BureauOS account was just changed, and all devices were signed out. If this wasn't you, reset your password right away and contact support.",
+    "Your Building202 password was changed",
+    "The password for your Building202 account was just changed, and all devices were signed out. If this wasn't you, reset your password right away and contact support.",
   );
   return NextResponse.json({ ok: true });
 }

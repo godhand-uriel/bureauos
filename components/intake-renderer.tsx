@@ -153,7 +153,7 @@ export function IntakeQuestionField({ question, value, onChange }: IntakeQuestio
             <Paperclip className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0 flex-1 space-y-2">
               <p className="text-sm text-muted-foreground">
-                BureauOS doesn&apos;t collect or store your documents. Note where you keep this one
+                Building202 doesn&apos;t collect or store your documents. Note where you keep this one
                 so you can find it fast.
               </p>
               <Input

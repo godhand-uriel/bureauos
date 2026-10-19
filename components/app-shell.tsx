@@ -8,7 +8,6 @@ import {
   Compass,
   CreditCard,
   FolderOpen,
-  Landmark,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
@@ -23,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useBureauStore, useCurrentUser, useHydrated } from "@/lib/store";
 import { StoreSeeder } from "@/components/store-seeder";
+import { BrandWordmark } from "@/components/brand-wordmark";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -47,14 +47,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      <Link href="/" onClick={onNavigate} className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Landmark className="h-5 w-5" />
-        </div>
-        <span className="text-lg font-bold tracking-tight">
-          Bureau<span className="text-primary">OS</span>
-        </span>
-      </Link>
+      <BrandWordmark className="px-5 py-5" onClick={onNavigate} />
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
         {NAV_ITEMS.map((item) => {
@@ -151,7 +144,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="border-t border-border p-4">
         <p className="text-xs text-muted-foreground">
-          BureauOS organizes information and next steps. It does not provide legal advice.
+          Building202 organizes information and next steps. It does not provide legal advice.
         </p>
       </div>
     </div>

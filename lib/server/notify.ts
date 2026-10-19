@@ -109,7 +109,7 @@ export function emailTransport(): EmailTransport {
 
 function emailText(body: string): string {
   const settings = `${appOrigin()}/settings/notifications`;
-  return `${body}\n\n—\nBureauOS · You're receiving this because you have a BureauOS account.\nChoose which emails you get: ${settings}\nBureauOS is self-service software. It is not a law firm and does not give legal advice.`;
+  return `${body}\n\n—\nBuilding202 · You're receiving this because you have a Building202 account.\nChoose which emails you get: ${settings}\nBuilding202 is self-service software. It is not a law firm and does not give legal advice.`;
 }
 
 function prefsFrom(p: Prisma.NotificationPreferenceGetPayload<object> | null): NotificationPreferences {

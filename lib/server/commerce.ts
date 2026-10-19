@@ -38,7 +38,7 @@ export function getProduct(key: string): ProductDef | null {
       key: CASE_PASS,
       name: CASE_PASS_NAME,
       description:
-        "One-time purchase for a single BureauOS case: unlocks the letter generator for that case. Self-service software; not legal advice.",
+        "One-time purchase for a single Building202 case: unlocks the letter generator for that case. Self-service software; not legal advice.",
       amountCents: casePassPriceCents(),
       currency: "usd",
     };

@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
       ) : (
         <p className="text-sm leading-relaxed text-muted-foreground">
           Password reset by email isn&apos;t available right now. If you&apos;re still signed in on
-          another device, change your password in Settings; otherwise contact BureauOS support.
+          another device, change your password in Settings; otherwise contact Building202 support.
         </p>
       )}
       <p className="mt-6 text-center text-sm text-muted-foreground">

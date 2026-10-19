@@ -13,7 +13,7 @@ import { CASE_PASS, isPaidNavigator } from "@/lib/launch";
  * The rule this module exists to enforce: a paid entitlement is created or
  * activated in exactly three places —
  *   1. `applyEvent`, from a signature-verified Stripe webhook whose amount,
- *      currency and session match the purchase BureauOS created;
+ *      currency and session match the purchase Building202 created;
  *   2. `staffGrantCasePass`, an admin action that is always audited;
  *   3. `simulatePaidPurchase`, which refuses to run in production.
  * Nothing a customer sends — not a redirect, not a request body — can do it.
@@ -340,14 +340,14 @@ async function fulfilCheckout(
   const purchase = await tx.purchase.findUnique({ where: { id: purchaseId } });
   if (!purchase) return false;
 
-  // It must be the session BureauOS created for this purchase.
+  // It must be the session Building202 created for this purchase.
   if (purchase.stripeCheckoutSessionId && purchase.stripeCheckoutSessionId !== session.id) {
     console.error("[bureauos] checkout session does not match purchase", { purchaseId });
     return false;
   }
   // "completed" can arrive before a delayed payment method has cleared.
   if (session.payment_status !== "paid") return true;
-  // Never fulfil on an amount or currency BureauOS did not set.
+  // Never fulfil on an amount or currency Building202 did not set.
   if (session.amount_total !== purchase.amountCents || (session.currency ?? "").toLowerCase() !== purchase.currency) {
     console.error("[bureauos] paid amount does not match purchase — not fulfilled, needs review", { purchaseId });
     return true;
