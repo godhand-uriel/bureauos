@@ -153,7 +153,8 @@ export function IntakeQuestionField({ question, value, onChange }: IntakeQuestio
             <Paperclip className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0 flex-1 space-y-2">
               <p className="text-sm text-muted-foreground">
-                File uploads are coming soon. For now, note where this document is stored so you can find it fast.
+                Building202 doesn&apos;t collect or store your documents. Note where you keep this one
+                so you can find it fast.
               </p>
               <Input
                 id={q.id}
@@ -216,20 +217,5 @@ function ContactField({
   );
 }
 
-/** Evaluates conditional visibility for a question against current answers. */
-export function isQuestionVisible(
-  q: IntakeQuestion,
-  answers: Record<string, AnswerValue>,
-): boolean {
-  if (!q.showIf) return true;
-  return answers[q.showIf.questionId] === q.showIf.equals;
-}
-
-/** True if the question has a usable answer. */
-export function isAnswered(q: IntakeQuestion, value: AnswerValue | undefined): boolean {
-  if (value === undefined || value === null) return false;
-  if (typeof value === "string") return value.trim() !== "";
-  if (Array.isArray(value)) return value.length > 0;
-  if (typeof value === "object") return (value as ContactValue).name.trim() !== "";
-  return true; // booleans and numbers
-}
+// Visibility and answer logic lives in lib/intake.ts (shared with the server).
+export { isAnswered, isQuestionVisible, pruneHiddenAnswers, visibleQuestions } from "@/lib/intake";

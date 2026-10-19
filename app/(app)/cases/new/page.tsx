@@ -64,7 +64,14 @@ function NewCaseForm() {
                 <NavigatorIcon icon={nav.icon} className="h-4 w-4" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium">{nav.shortName}</p>
+                <p className="text-sm font-medium">
+                  {nav.shortName}
+                  {nav.launchStatus !== "live" && (
+                    <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-normal text-muted-foreground">
+                      Preview
+                    </span>
+                  )}
+                </p>
                 <p className="truncate text-xs text-muted-foreground">{nav.tagline}</p>
               </div>
             </button>
@@ -99,8 +106,10 @@ function NewCaseForm() {
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {selected
-                ? `Next: ${selected.questions.length} intake questions (~5 minutes, progress saves as you go).`
-                : "Your case, tasks, and documents are stored locally on this device."}
+                ? selected.launchStatus === "live"
+                  ? `Next: up to ${selected.questions.length} intake questions (~5 minutes, progress saves as you go). Starting a case is free.`
+                  : `Preview navigator: general organizing tools, no verified deadline rules. Next: up to ${selected.questions.length} intake questions.`
+                : "Starting a case is free. Your case is saved to your account."}
             </p>
           </div>
           <Button onClick={handleCreate} disabled={!slug} size="lg" className="shrink-0">

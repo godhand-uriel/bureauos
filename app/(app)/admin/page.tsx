@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarClock, ClipboardCheck, FileWarning, FolderOpen, LifeBuoy, ScrollText, Sparkles } from "lucide-react";
+import { BadgeCheck, CalendarClock, ClipboardCheck, FolderOpen, LifeBuoy, ScrollText, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
 import { ReviewStatusBadge, TicketStatusBadge, TierBadge } from "@/components/platform-badges";
 import { getNavigator } from "@/lib/navigators";
+import { CASE_PASS } from "@/lib/launch";
 import { caseProgress } from "@/lib/plan-engine";
 import { useBureauStore, useHydrated } from "@/lib/store";
-import { daysUntil, formatDate, formatDateTime, relativeDeadline } from "@/lib/utils";
+import { daysFromToday, relativeDay } from "@/lib/dates";
+import { formatDate, formatDateTime } from "@/lib/utils";
 
 export default function AdminOverviewPage() {
   const hydrated = useHydrated();
@@ -17,7 +19,8 @@ export default function AdminOverviewPage() {
   const users = useBureauStore((s) => s.users);
   const tickets = useBureauStore((s) => s.tickets);
   const reviews = useBureauStore((s) => s.reviews);
-  const files = useBureauStore((s) => s.files);
+  const entitlements = useBureauStore((s) => s.entitlements);
+  const humanReview = useBureauStore((s) => s.capabilities?.humanReview ?? false);
   const auditLog = useBureauStore((s) => s.auditLog);
 
   if (!hydrated) return <div className="h-64 animate-pulse rounded-lg bg-secondary" />;
@@ -28,28 +31,38 @@ export default function AdminOverviewPage() {
   const newIntakes = cases.filter((c) => !c.intake.completed);
   const pendingReviews = reviews.filter((r) => ["requested", "awaiting_documents", "in_review"].includes(r.status));
   const openTickets = tickets.filter((t) => t.status !== "resolved" && t.status !== "closed");
-  const pendingFiles = files.filter((f) => f.status === "pending_review");
+  const activePasses = new Set(
+    entitlements.filter((e) => e.product === CASE_PASS && e.status === "active").map((e) => e.caseId),
+  );
   const missingDocsCases = openCases
     .map((c) => ({ kase: c, missing: c.documents.filter((d) => d.required && d.status !== "obtained" && d.status !== "not_applicable").length }))
     .filter((x) => x.missing > 0);
-  const upcomingDeadlines = cases
-    .flatMap((c) => c.deadlines.filter((d) => !d.verified && daysUntil(d.date) <= 14).map((d) => ({ deadline: d, kase: c })))
-    .sort((a, b) => a.deadline.date.localeCompare(b.deadline.date))
-    .slice(0, 6);
+  // Official / notice deadlines only: due within 14 days, or still undated.
+  const upcomingDeadlines = openCases
+    .flatMap((c) =>
+      c.deadlines
+        .filter((d) => d.kind !== "suggested" && (d.date === null || daysFromToday(d.date) <= 14))
+        .map((d) => ({ deadline: d, kase: c })),
+    )
+    .sort((a, b) => (a.deadline.date ?? "9999").localeCompare(b.deadline.date ?? "9999"))
+    .slice(0, 8);
 
   const stats = [
     { label: "Open cases", value: openCases.length, icon: FolderOpen },
     { label: "High priority", value: highPriority.length, icon: Sparkles },
-    { label: "Reviews pending", value: pendingReviews.length, icon: ClipboardCheck },
     { label: "Open tickets", value: openTickets.length, icon: LifeBuoy },
-    { label: "Files to verify", value: pendingFiles.length, icon: FileWarning },
-    { label: "Deadlines ≤ 14d", value: upcomingDeadlines.length, icon: CalendarClock },
+    { label: "Case Passes active", value: activePasses.size, icon: BadgeCheck },
+    { label: "Deadlines to watch", value: upcomingDeadlines.length, icon: CalendarClock },
+    // Only shown when the staffed review service is on (or requests exist).
+    ...(humanReview || reviews.length > 0
+      ? [{ label: "Reviews pending", value: pendingReviews.length, icon: ClipboardCheck }]
+      : []),
   ];
 
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         {stats.map((s) => (
           <Card key={s.label}>
             <CardContent className="p-4">
@@ -74,7 +87,7 @@ export default function AdminOverviewPage() {
                 <th className="pb-2 pr-3 font-medium">Customer</th>
                 <th className="pb-2 pr-3 font-medium">Status</th>
                 <th className="pb-2 pr-3 font-medium">Priority</th>
-                <th className="pb-2 pr-3 font-medium">Package</th>
+                <th className="pb-2 pr-3 font-medium">Access</th>
                 <th className="pb-2 pr-3 font-medium">Progress</th>
                 <th className="pb-2 font-medium">Updated</th>
               </tr>
@@ -95,7 +108,15 @@ export default function AdminOverviewPage() {
                       <td className="py-2.5 pr-3 text-muted-foreground">{customerName(c.userId)}</td>
                       <td className="py-2.5 pr-3"><StatusBadge status={c.status} /></td>
                       <td className="py-2.5 pr-3"><PriorityBadge priority={c.priority} /></td>
-                      <td className="py-2.5 pr-3"><TierBadge tier={c.serviceTier} /></td>
+                      <td className="py-2.5 pr-3">
+                        {c.serviceTier !== "self_service" ? (
+                          <TierBadge tier={c.serviceTier} />
+                        ) : activePasses.has(c.id) ? (
+                          <Badge variant="success">Case Pass</Badge>
+                        ) : (
+                          <Badge variant="secondary">Free</Badge>
+                        )}
+                      </td>
                       <td className="py-2.5 pr-3 text-muted-foreground">{caseProgress(c)}%</td>
                       <td className="py-2.5 text-muted-foreground">{formatDate(c.updatedAt)}</td>
                     </tr>
@@ -182,20 +203,24 @@ export default function AdminOverviewPage() {
         {/* Upcoming deadlines */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Upcoming customer deadlines (14 days)</CardTitle>
+            <CardTitle className="text-base">Customer deadlines: due within 14 days or unverified</CardTitle>
           </CardHeader>
           <CardContent>
             {upcomingDeadlines.length === 0 ? (
-              <p className="py-2 text-sm text-muted-foreground">No unverified deadlines in the next two weeks.</p>
+              <p className="py-2 text-sm text-muted-foreground">No official deadlines due or awaiting verification.</p>
             ) : (
               <ul className="space-y-2">
                 {upcomingDeadlines.map(({ deadline, kase }) => (
                   <li key={deadline.id} className="rounded-lg border border-border bg-card/50 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium">{deadline.title}</p>
-                      <Badge variant={daysUntil(deadline.date) < 0 ? "destructive" : "warning"} className="text-[10px]">
-                        {relativeDeadline(deadline.date)}
-                      </Badge>
+                      {deadline.date ? (
+                        <Badge variant={daysFromToday(deadline.date) < 0 ? "destructive" : "warning"} className="text-[10px]">
+                          {relativeDay(deadline.date)}
+                        </Badge>
+                      ) : (
+                        <Badge variant="warning" className="text-[10px]">Needs verification</Badge>
+                      )}
                     </div>
                     <Link href={`/admin/cases/${kase.id}`} className="mt-0.5 block text-xs text-primary hover:underline">
                       {kase.title} · {customerName(kase.userId)}
@@ -220,8 +245,8 @@ export default function AdminOverviewPage() {
         <CardContent>
           {auditLog.length === 0 ? (
             <p className="py-2 text-sm text-muted-foreground">
-              Staff actions (status changes, notes, review decisions, file verification) are
-              recorded here automatically.
+              Staff actions (status changes, assignments, notes, Case Pass grants and removals)
+              are recorded here automatically.
             </p>
           ) : (
             <ul className="divide-y divide-border">

@@ -3,156 +3,230 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BadgeCheck, Check, CreditCard, FlaskConical } from "lucide-react";
+import { ArrowRight, BadgeCheck, Check, FlaskConical, Loader2, Lock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Callout } from "@/components/callout";
-import { SERVICE_TIERS, getTier } from "@/lib/packages";
-import { useBureauStore, useCase } from "@/lib/store";
-import type { ServiceTierId } from "@/lib/types";
+import { CASE_PASS, CASE_PASS_EXCLUDES, CASE_PASS_INCLUDES, CASE_PASS_NAME, formatPrice, isPaidNavigator } from "@/lib/launch";
+import { useBureauStore, useCapabilities, useCase, useHydrated, useMyCases } from "@/lib/store";
 
-function isTierId(v: string | null): v is ServiceTierId {
-  return SERVICE_TIERS.some((t) => t.id === v);
-}
-
-function CheckoutForm() {
+/**
+ * Case Pass checkout. This page collects no payment details: it asks the
+ * server for a Stripe-hosted Checkout session and sends the browser there.
+ * The Case Pass is unlocked by Stripe's signed webhook, not by this page.
+ */
+function Checkout() {
   const router = useRouter();
   const params = useSearchParams();
-  const setSubscriptionTier = useBureauStore((s) => s.setSubscriptionTier);
-  const setCaseServiceTier = useBureauStore((s) => s.setCaseServiceTier);
+  const hydrated = useHydrated();
+  const caps = useCapabilities();
+  const caseId = params.get("case") ?? "";
+  const canceled = params.get("canceled") === "1";
+  const kase = useCase(caseId);
+  const myCases = useMyCases();
+  const entitlements = useBureauStore((s) => s.entitlements);
+  const startCheckout = useBureauStore((s) => s.startCheckout);
+  const simulateDevPayment = useBureauStore((s) => s.simulateDevPayment);
+  const [busy, setBusy] = useState<"pay" | "simulate" | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const planParam = params.get("plan");
-  const caseId = params.get("case");
-  const kase = useCase(caseId ?? "");
-  const [tierId, setTierId] = useState<ServiceTierId>(isTierId(planParam) ? planParam : "assisted_review");
-  const tier = getTier(tierId);
-  const [cardName, setCardName] = useState("");
-  const [done, setDone] = useState(false);
+  if (!hydrated || !caps) return <div className="h-64 animate-pulse rounded-lg bg-secondary" />;
 
-  const complete = async () => {
-    await setSubscriptionTier(tierId);
-    if (kase) setCaseServiceTier(kase.id, tierId);
-    setDone(true);
-    setTimeout(() => router.push(kase ? `/cases/${kase.id}` : "/billing"), 1200);
-  };
+  const hasPass = (id: string) =>
+    entitlements.some((e) => e.caseId === id && e.product === CASE_PASS && e.status === "active");
+  const price = formatPrice(caps.casePass.priceCents, caps.casePass.currency);
 
-  if (done) {
+  // No (valid) case chosen: the Case Pass is bought for one specific case.
+  if (!kase || !isPaidNavigator(kase.navigatorSlug)) {
+    const eligible = myCases.filter((c) => isPaidNavigator(c.navigatorSlug) && !hasPass(c.id));
     return (
-      <div className="mx-auto flex max-w-md flex-col items-center pt-16 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15">
-          <BadgeCheck className="h-7 w-7 text-emerald-400" />
+      <div className="mx-auto max-w-2xl space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{CASE_PASS_NAME}</h1>
+          <p className="mt-1 text-muted-foreground">
+            {price}, one time, for one Job Separation case. Choose the case it&apos;s for.
+          </p>
         </div>
-        <h1 className="mt-5 text-xl font-bold">You&apos;re on {tier.name}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Simulated checkout complete — no real charge was made. Redirecting…
-        </p>
+        <Card>
+          <CardContent className="space-y-3 p-6">
+            {eligible.length === 0 ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  You don&apos;t have a Job Separation case that needs a Case Pass. Start one — the
+                  intake, plan, and deadline tracking are free.
+                </p>
+                <Link href="/cases/new?navigator=job-separation" className="inline-block">
+                  <Button>
+                    Start a Job Separation case
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              eligible.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/checkout?case=${c.id}`}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card/50 p-4 text-sm transition-colors hover:border-primary/40"
+                >
+                  <span className="font-medium">{c.title}</span>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
+  if (hasPass(kase.id)) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center pt-12 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15">
+          <BadgeCheck className="h-7 w-7 text-emerald-400" />
+        </div>
+        <h1 className="mt-5 text-xl font-bold">This case already has a Case Pass</h1>
+        <p className="mt-2 text-sm text-muted-foreground">The letter generator is unlocked for “{kase.title}”.</p>
+        <Link href={`/cases/${kase.id}/letters`} className="mt-6">
+          <Button>
+            Open letters
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const pay = async () => {
+    setBusy("pay");
+    setError(null);
+    const result = await startCheckout(kase.id);
+    if (!result.ok) {
+      setBusy(null);
+      setError(result.error);
+      return;
+    }
+    // Leave for Stripe-hosted Checkout. Card details are entered there, never here.
+    window.location.assign(result.url);
+  };
+
+  const simulate = async () => {
+    setBusy("simulate");
+    setError(null);
+    const result = await simulateDevPayment(kase.id);
+    setBusy(null);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    router.push(`/cases/${kase.id}/letters`);
+  };
+
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Checkout</h1>
         <p className="mt-1 text-muted-foreground">
-          {kase ? `Upgrading service for “${kase.title}”.` : "Choose your service package."}
+          {CASE_PASS_NAME} for “{kase.title}”.
         </p>
       </div>
 
-      <Callout variant="warning" title="Simulated checkout">
-        Payments are not live in this MVP. Completing this flow records a local subscription and a
-        mock billing entry — no card is charged and no card data is stored. The flow is shaped for
-        Stripe Checkout + webhooks (see README → Payments).
-      </Callout>
+      {canceled && (
+        <Callout variant="info" title="Checkout canceled">
+          No payment was made. You can try again whenever you&apos;re ready.
+        </Callout>
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Your plan</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {SERVICE_TIERS.filter((t) => t.priceMonthly > 0).map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTierId(t.id)}
-                className={`w-full rounded-lg border p-3.5 text-left transition-colors ${
-                  tierId === t.id ? "border-primary/60 bg-primary/10" : "border-border bg-card/50 hover:border-primary/30"
-                }`}
-                aria-pressed={tierId === t.id}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{t.name}</span>
-                  <span className="text-sm font-bold">{t.priceLabel}</span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">{t.tagline}</p>
-              </button>
-            ))}
-            <Link href="/pricing" className="block pt-1 text-center text-xs text-primary hover:underline">
-              Compare all plans
-            </Link>
-          </CardContent>
-        </Card>
+      {caps.payments === "test" && (
+        <Callout variant="warning" title="Stripe test mode">
+          This environment is connected to Stripe in test mode. No real money moves, and only
+          Stripe&apos;s test cards work.
+        </Callout>
+      )}
 
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CreditCard className="h-4 w-4 text-primary" />
-              Payment details
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-medium text-amber-400">
-                <FlaskConical className="h-3 w-3" />
-                Simulation
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="card-name">Name on card</Label>
-              <Input id="card-name" value={cardName} onChange={(e) => setCardName(e.target.value)} placeholder="Jordan Avery" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="card-number">Card number</Label>
-              <Input id="card-number" value="4242 4242 4242 4242" readOnly className="text-muted-foreground" aria-describedby="card-note" />
-              <p id="card-note" className="text-xs text-muted-foreground">
-                Test card, read-only — real card entry is handled by Stripe in production.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="card-exp">Expiry</Label>
-                <Input id="card-exp" value="12/29" readOnly className="text-muted-foreground" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="card-cvc">CVC</Label>
-                <Input id="card-cvc" value="424" readOnly className="text-muted-foreground" />
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-border bg-card/50 p-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{tier.name} — monthly</span>
-                <span className="font-semibold">{tier.priceLabel}</span>
-              </div>
-              <ul className="mt-3 space-y-1">
-                {tier.included.slice(0, 3).map((i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
-                    {i}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-baseline justify-between gap-3 text-base">
+            <span>{CASE_PASS_NAME}</span>
+            <span className="text-xl font-bold">{price}</span>
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">One-time payment for this case. Not a subscription.</p>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Includes</p>
+              <ul className="mt-2 space-y-1.5">
+                {CASE_PASS_INCLUDES.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                    {item}
                   </li>
                 ))}
               </ul>
             </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Does not include</p>
+              <ul className="mt-2 space-y-1.5">
+                {CASE_PASS_EXCLUDES.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <X className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/60" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
 
-            <Button className="w-full" size="lg" onClick={complete}>
-              Complete simulated checkout — {tier.priceLabel}
-            </Button>
-            <p className="text-center text-xs text-muted-foreground">
-              No real payment occurs. You can switch back to the free plan any time from Billing.
+          {caps.payments === "off" ? (
+            <Callout variant="info" title="Purchases aren't available right now">
+              Payment processing isn&apos;t set up in this environment, so nothing can be bought here.
+              Your plan, deadlines, checklists, and timeline are free and keep working.
+            </Callout>
+          ) : (
+            <div className="space-y-3">
+              <Button className="w-full" size="lg" onClick={pay} disabled={busy !== null}>
+                {busy === "pay" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                Continue to secure payment — {price}
+              </Button>
+              <p className="text-center text-xs leading-relaxed text-muted-foreground">
+                You&apos;ll pay on a page hosted by Stripe. Building202 never sees or stores your card
+                details. By purchasing you agree to the{" "}
+                <Link href="/legal/terms" target="_blank" className="text-primary underline underline-offset-2">
+                  Terms of Service
+                </Link>
+                , including the refund terms.
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <p role="alert" className="text-sm text-red-400">
+              {error}
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {caps.devTools && (
+        <Card className="border-amber-500/30">
+          <CardContent className="space-y-3 p-5">
+            <p className="flex items-center gap-2 text-sm font-semibold text-amber-300">
+              <FlaskConical className="h-4 w-4" />
+              Development tools — not available in production
+            </p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Unlocks the Case Pass on this case without Stripe so the paid experience can be
+              exercised locally. Recorded as a simulation, never as a payment.
+            </p>
+            <Button variant="outline" size="sm" onClick={simulate} disabled={busy !== null}>
+              {busy === "simulate" && <Loader2 className="h-4 w-4 animate-spin" />}
+              Simulate a completed payment
+            </Button>
           </CardContent>
         </Card>
-      </div>
+      )}
     </div>
   );
 }
@@ -160,7 +234,7 @@ function CheckoutForm() {
 export default function CheckoutPage() {
   return (
     <Suspense>
-      <CheckoutForm />
+      <Checkout />
     </Suspense>
   );
 }

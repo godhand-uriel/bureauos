@@ -1,13 +1,19 @@
 import type { JurisdictionRule } from "@/lib/types";
+import { isPilotState } from "@/lib/deadline-rules";
+import { normalizeUsState } from "@/lib/us-states";
 
 /**
- * Jurisdiction-specific rules framework.
+ * Jurisdiction notes: plain-language process information shown beside a plan.
  *
- * These are SEEDED SAMPLES demonstrating the data shape — not a complete or
- * authoritative rules database. Every rule carries its own disclaimer and a
- * lastUpdated date, and the UI always tells users to verify with official
- * agencies. In production this becomes a maintained dataset (or table —
- * see prisma/schema.prisma → JurisdictionRule) with editorial review.
+ * Each entry carries a `reviewStatus`:
+ *  - "source_checked": the text was checked against the linked source on
+ *    `lastUpdated`. That is an engineering source check, pending attorney
+ *    review. Only these are ever shown to customers (see rulesForCase).
+ *  - "unverified_sample": illustrative content from the original MVP, kept
+ *    so it can be validated later. Never shown as guidance.
+ *
+ * Calculable deadlines live in lib/deadline-rules.ts; these notes describe
+ * the surrounding process and link the same sources.
  */
 
 const VERIFY =
@@ -39,6 +45,7 @@ export const JURISDICTION_RULES: JurisdictionRule[] = [
       { label: "CA Civil Code §1941–1942", url: "https://leginfo.legislature.ca.gov" },
     ],
     disclaimer: VERIFY,
+    reviewStatus: "unverified_sample",
     lastUpdated: "2026-06-01",
   },
   {
@@ -61,6 +68,7 @@ export const JURISDICTION_RULES: JurisdictionRule[] = [
     ],
     officialLinks: [{ label: "CA small claims self-help", url: "https://selfhelp.courts.ca.gov/small-claims" }],
     disclaimer: VERIFY,
+    reviewStatus: "unverified_sample",
     lastUpdated: "2026-06-01",
   },
   {
@@ -83,6 +91,7 @@ export const JURISDICTION_RULES: JurisdictionRule[] = [
     ],
     officialLinks: [{ label: "TX DPS License Eligibility", url: "https://www.dps.texas.gov/section/driver-license" }],
     disclaimer: VERIFY,
+    reviewStatus: "unverified_sample",
     lastUpdated: "2026-05-15",
   },
   {
@@ -104,6 +113,7 @@ export const JURISDICTION_RULES: JurisdictionRule[] = [
     ],
     officialLinks: [{ label: "L&I wage complaints", url: "https://lni.wa.gov/workers-rights" }],
     disclaimer: VERIFY,
+    reviewStatus: "unverified_sample",
     lastUpdated: "2026-04-20",
   },
   {
@@ -126,6 +136,7 @@ export const JURISDICTION_RULES: JurisdictionRule[] = [
     ],
     officialLinks: [{ label: "Healthcare.gov appeals guide", url: "https://www.healthcare.gov/appeal-insurance-company-decision/" }],
     disclaimer: VERIFY,
+    reviewStatus: "unverified_sample",
     lastUpdated: "2026-06-10",
   },
   {
@@ -147,6 +158,7 @@ export const JURISDICTION_RULES: JurisdictionRule[] = [
     ],
     officialLinks: [{ label: "VA decision reviews", url: "https://www.va.gov/decision-reviews/" }],
     disclaimer: VERIFY,
+    reviewStatus: "unverified_sample",
     lastUpdated: "2026-05-30",
   },
   {
@@ -169,16 +181,137 @@ export const JURISDICTION_RULES: JurisdictionRule[] = [
     ],
     officialLinks: [{ label: "Sunbiz annual report", url: "https://dos.fl.gov/sunbiz/" }],
     disclaimer: VERIFY,
+    reviewStatus: "unverified_sample",
     lastUpdated: "2026-03-01",
+  },
+
+  /* ---------------------------------------------------------------- */
+  /* Job Separation — Florida pilot. Source-checked (see lastUpdated). */
+  /* ---------------------------------------------------------------- */
+  {
+    id: "fl-ra-appeal",
+    state: "Florida",
+    agency: "FloridaCommerce — Reemployment Assistance",
+    navigatorSlug: "job-separation",
+    category: "Unemployment appeals",
+    title: "Florida Reemployment Assistance: appealing a determination",
+    summary:
+      "An appeal hearing must be requested within 20 calendar days after the date of the determination (its “distributed date”). If the 20th day is a Saturday, Sunday, or legal holiday, the last day to file is the next business day. The period runs from the determination — not from your last day of work.",
+    deadlineType: "Appeal period",
+    deadlineDetail:
+      "20 calendar days after the distributed date; a last day on a weekend or legal holiday moves to the next business day (Fla. Admin. Code R. 73B-20.005).",
+    requiredDocuments: ["The determination (all pages)", "Records supporting your account of the separation"],
+    processSteps: [
+      "Find the distributed date and the appeal instructions on the determination",
+      "File the appeal online, by mail, or by fax as the determination instructs, before the deadline",
+      "Keep proof of the filing date (submission confirmation, postmark, or fax date-stamp)",
+      "Keep requesting benefit payments while the appeal is pending, if the agency instructs you to",
+    ],
+    officialLinks: [
+      { label: "FloridaCommerce: File an Appeal", url: "https://floridajobs.org/workforce-resources/reemployment-assistance/claimants/file-an-appeal" },
+      { label: "Fla. Admin. Code R. 73B-20.005 (computation of time)", url: "https://www.flrules.org/gateway/ruleNo.asp?id=73B-20.005" },
+      { label: "Fla. Stat. § 443.151 (Florida Senate)", url: "https://www.flsenate.gov/Laws/Statutes/2025/443.151" },
+    ],
+    disclaimer: VERIFY,
+    reviewStatus: "source_checked",
+    lastUpdated: "2026-10-18",
+  },
+  {
+    id: "fl-final-pay",
+    state: "Florida",
+    agency: "U.S. Department of Labor — Wage and Hour Division",
+    navigatorSlug: "job-separation",
+    category: "Final wages",
+    title: "Final paycheck timing in Florida",
+    summary:
+      "Building202 did not find a Florida statute that sets a separate deadline for a final paycheck. Federal law does not require an employer to pay final wages immediately; the U.S. Department of Labor's guidance is to act once the regular payday for your last pay period has passed without payment.",
+    deadlineType: "Reference date",
+    deadlineDetail: "The regular payday for the last pay period you worked — a date only you and your employer know.",
+    requiredDocuments: ["Final pay stub (or note that none was issued)", "Your own record of hours and pay owed", "Employer PTO policy, if you expect a payout"],
+    processSteps: [
+      "Identify the regular payday for your final pay period",
+      "If it passes without full payment, send a dated written request",
+      "If unresolved, contact the U.S. Department of Labor's Wage and Hour Division",
+    ],
+    officialLinks: [
+      { label: "U.S. DOL — Last Paycheck", url: "https://www.dol.gov/general/topic/wages/lastpaycheck" },
+    ],
+    disclaimer:
+      VERIFY +
+      " The absence of a Florida final-pay statute was confirmed from secondary sources only and is pending attorney review.",
+    reviewStatus: "source_checked",
+    lastUpdated: "2026-10-11",
+  },
+  {
+    id: "us-cobra-election",
+    state: "Federal (US)",
+    agency: "U.S. Department of Labor — Employee Benefits Security Administration",
+    navigatorSlug: "job-separation",
+    category: "Health coverage",
+    title: "COBRA continuation coverage: election period",
+    summary:
+      "A plan covered by federal COBRA must give you an election period that does not end before 60 days after the later of the date you would lose coverage or the date the election notice is provided to you. Federal COBRA generally applies to employers with 20 or more employees.",
+    deadlineType: "Election period",
+    deadlineDetail:
+      "At least 60 days after the later of coverage loss and the date the notice was provided — both dates are needed to know it.",
+    requiredDocuments: ["COBRA election notice", "Proof of your coverage end date", "The envelope or email the notice came in"],
+    processSteps: [
+      "Confirm your coverage end date with the employer or insurer",
+      "Note when the election notice was actually sent or given to you (postmark or email date), not only the date printed on it",
+      "Find the election deadline stated in the notice, and act by the earliest deadline you're given",
+      "Compare COBRA premiums with Marketplace options before electing",
+    ],
+    officialLinks: [
+      { label: "26 C.F.R. § 54.4980B-6 (Cornell LII)", url: "https://www.law.cornell.edu/cfr/text/26/54.4980B-6" },
+      { label: "U.S. DOL Health Benefits Advisor", url: "https://webapps.dol.gov/elaws/ebsa/health/89.asp" },
+    ],
+    disclaimer: VERIFY,
+    reviewStatus: "source_checked",
+    lastUpdated: "2026-10-18",
+  },
+  {
+    id: "us-marketplace-sep",
+    state: "Federal (US)",
+    agency: "Centers for Medicare & Medicaid Services — HealthCare.gov",
+    navigatorSlug: "job-separation",
+    category: "Health coverage",
+    title: "Marketplace special enrollment after losing job-based coverage",
+    summary:
+      "Losing job-based coverage opens a Special Enrollment Period: generally 60 days after the coverage ends, and you can apply up to 60 days before it ends. The period runs from when coverage actually ends, which may be later than your last day of work.",
+    deadlineType: "Special enrollment period",
+    deadlineDetail: "60 days after the date job-based coverage ends.",
+    requiredDocuments: ["Proof that your coverage ended or will end, with the date"],
+    processSteps: [
+      "Get written confirmation of your coverage end date",
+      "Apply at HealthCare.gov within the window",
+      "Keep proof of the coverage loss — the Marketplace may ask for it",
+    ],
+    officialLinks: [
+      { label: "CMS — Losing Job-Based Coverage", url: "https://www.cms.gov/marketplace/outreach-and-education/losing-job-based-coverage.pdf" },
+      { label: "HealthCare.gov", url: "https://www.healthcare.gov/" },
+    ],
+    disclaimer: VERIFY,
+    reviewStatus: "source_checked",
+    lastUpdated: "2026-10-11",
   },
 ];
 
-/** Rules matching a case: same navigator, and state matching the intake answer (or federal). */
+/**
+ * Jurisdiction notes shown on a case's plan.
+ *
+ * Only `source_checked` rules are ever returned — unverified samples stay in
+ * the file as content to validate later and are never presented as guidance.
+ * Federal rules are included only when the case's state is in the launch
+ * pilot, so a state Building202 has not validated gets no jurisdiction notes at
+ * all rather than a partial picture.
+ */
 export function rulesForCase(navigatorSlug: string, stateAnswer: unknown): JurisdictionRule[] {
-  const state = typeof stateAnswer === "string" ? stateAnswer.trim().toLowerCase() : "";
+  const state = normalizeUsState(stateAnswer);
+  if (!state || !isPilotState(state.code)) return [];
   return JURISDICTION_RULES.filter(
     (r) =>
+      r.reviewStatus === "source_checked" &&
       r.navigatorSlug === navigatorSlug &&
-      (r.state.toLowerCase() === state || r.state.startsWith("Federal")),
+      (r.state === state.name || r.state.startsWith("Federal")),
   );
 }

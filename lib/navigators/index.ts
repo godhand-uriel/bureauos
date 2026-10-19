@@ -6,9 +6,10 @@ import insuranceDenial from "./insurance-denial";
 import veteranBenefits from "./veteran-benefits";
 import tenantRights from "./tenant-rights";
 
+/** The launch navigator leads; the rest are preview (see `launchStatus`). */
 export const NAVIGATORS: NavigatorDef[] = [
-  dmv,
   jobSeparation,
+  dmv,
   smallBusiness,
   insuranceDenial,
   veteranBenefits,

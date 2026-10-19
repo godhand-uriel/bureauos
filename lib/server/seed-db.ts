@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { buildSeedCases } from "@/lib/seed";
 import { caseToCreateData } from "@/lib/server/serializers";
 import { hashPassword } from "@/lib/server/passwords";
+import { humanReviewEnabled } from "@/lib/server/commerce";
 import {
   DEFAULT_NOTIFICATION_PREFS,
   DEMO_ADMIN_EMAIL,
@@ -12,16 +13,21 @@ import {
 import { daysFromNow, uid } from "@/lib/utils";
 
 /**
- * Seeds the database with the demo accounts and demo data:
- *  - customer  demo@bureauos.app  (4 realistic cases, Assisted Review plan)
+ * DEVELOPMENT ONLY. Seeds the database with the demo accounts and demo data:
+ *  - customer  demo@bureauos.app  (realistic cases, self-service)
  *  - admin     admin@bureauos.app
- * plus one support ticket, one in-review request, file metadata, disclaimer
- * acceptances, and welcome notifications — the same "lived-in" state the
- * localStorage demo used to build client-side.
+ * plus one support ticket, disclaimer acceptances, and a welcome
+ * notification. No purchases or entitlements are seeded: the demo customer
+ * goes through the Case Pass purchase flow like anyone else.
  *
  * Idempotent: skips if the demo customer already exists (unless wiped first).
  */
 export async function seedDatabase(prisma: PrismaClient): Promise<{ seeded: boolean }> {
+  // Defense in depth: every caller already refuses in production, but the
+  // demo accounts carry a published password, so the seed itself refuses too.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Demo data must never be seeded in production.");
+  }
   const existing = await prisma.user.findUnique({ where: { email: DEMO_CUSTOMER_EMAIL } });
   if (existing) return { seeded: false };
 
@@ -45,8 +51,11 @@ export async function seedDatabase(prisma: PrismaClient): Promise<{ seeded: bool
     },
   });
 
-  // Demo cases come from the same content + rule engine the app uses.
-  const seedCases = buildSeedCases(customer.id, "assisted_review");
+  // Demo cases come from the same content + rule engine the app uses. The
+  // human-assisted tier and its review request are only seeded when that
+  // service is switched on, so the demo never shows a service that is off.
+  const humanReview = humanReviewEnabled();
+  const seedCases = buildSeedCases(customer.id, humanReview ? "assisted_review" : "self_service");
   const insurance = seedCases.find((c) => c.navigatorSlug === "insurance-denial");
   const tenant = seedCases.find((c) => c.navigatorSlug === "tenant-rights");
   if (insurance) {
@@ -77,22 +86,7 @@ export async function seedDatabase(prisma: PrismaClient): Promise<{ seeded: bool
     })),
   });
 
-  await prisma.subscription.create({
-    data: {
-      userId: customer.id,
-      tier: "assisted_review",
-      status: "active",
-      startedAt: new Date(daysFromNow(-30)),
-      payments: {
-        create: [
-          { label: "Assisted Review — monthly (simulated)", amountLabel: "$29.00", kind: "mock_charge", createdAt: new Date(daysFromNow(-30)) },
-          { label: "Assisted Review — monthly (simulated)", amountLabel: "$29.00", kind: "mock_charge", createdAt: new Date(daysFromNow(-1)) },
-        ],
-      },
-    },
-  });
-
-  if (insurance) {
+  if (insurance && humanReview) {
     await prisma.reviewRequest.create({
       data: {
         caseId: insurance.id,
@@ -131,7 +125,7 @@ export async function seedDatabase(prisma: PrismaClient): Promise<{ seeded: bool
           {
             authorRole: "staff",
             authorName: admin.name,
-            body: "Good question — send the written request first and keep proof of delivery. Code enforcement is the escalation if the landlord stays silent past a reasonable window (your plan flags ~14 days for a major repair). Want us to look over your letter draft before you send it? If yes, reply here and attach it to the case.",
+            body: "Thanks for reaching out. We can't tell you which step is right for your situation — that's legal advice, and a local tenant hotline or legal aid office can give it for free. What we can say is how the tools work: your plan lists the written request first because a dated letter creates the record most later steps rely on. Reply here if anything in the app isn't working the way you expect.",
             createdAt: new Date(daysFromNow(-1)),
           },
         ],
@@ -139,33 +133,35 @@ export async function seedDatabase(prisma: PrismaClient): Promise<{ seeded: bool
       internalNotes: {
         create: {
           authorName: admin.name,
-          body: "Customer is on Assisted Review — offer a letter check-in before escalation advice goes further.",
+          body: "Second follow-up from this customer on the same leak — check back in a week if no reply.",
           createdAt: new Date(daysFromNow(-1)),
         },
       },
     },
   });
 
-  const files = [
-    tenant && { caseId: tenant.id, name: "ceiling-leak-photo-1.jpg", fileType: "image/jpeg", sizeLabel: "2.1 MB", category: "repair_photos", status: "verified", notes: "Water stain, bathroom ceiling — dated in frame.", uploadedAt: new Date(daysFromNow(-9)) },
-    tenant && { caseId: tenant.id, name: "lease-2025-signed.pdf", fileType: "application/pdf", sizeLabel: "840 KB", category: "lease_documents", status: "verified", notes: "", uploadedAt: new Date(daysFromNow(-9)) },
-    insurance && { caseId: insurance.id, name: "meridian-denial-letter.pdf", fileType: "application/pdf", sizeLabel: "312 KB", category: "insurance_denial_letters", status: "pending_review", notes: "Full EOB, 3 pages.", uploadedAt: new Date(daysFromNow(-6)) },
-  ].filter((f): f is NonNullable<typeof f> => Boolean(f));
-  await prisma.uploadedFile.createMany({
-    data: files.map((f) => ({ ...f, userId: customer.id })),
-  });
-
   await prisma.notificationEvent.createMany({
     data: [
-      { userId: customer.id, type: "welcome", channel: "email", subject: "Welcome to BureauOS", body: "Your account is set up. Start a case any time — your dashboard keeps everything organized.", status: "mock_sent" },
-      { userId: customer.id, type: "review_update", channel: "email", subject: "Your review is in progress", body: "A reviewer is examining your MRI claim denial case file.", status: "mock_sent" },
+      { userId: customer.id, type: "welcome", channel: "email", subject: "Welcome to Building202", body: "Your account is set up. Start a case any time — your dashboard keeps everything organized.", status: "mock_sent" },
+      ...(humanReview
+        ? [{ userId: customer.id, type: "review_update", channel: "email", subject: "Your review is in progress", body: "A reviewer is examining your MRI claim denial case file.", status: "mock_sent" }]
+        : []),
     ],
   });
 
   return { seeded: true };
 }
 
-/** Deletes all rows (dev/demo reset). Order handled by cascade from User. */
+/**
+ * Deletes all rows (development reset and test setup only — the reset route
+ * is 404 in production). Most tables cascade from User; purchases and the
+ * Stripe event ledger deliberately outlive their user, so they go explicitly.
+ */
 export async function wipeDatabase(prisma: PrismaClient): Promise<void> {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("The database must never be wiped in production.");
+  }
   await prisma.user.deleteMany({});
+  await prisma.purchase.deleteMany({});
+  await prisma.stripeEvent.deleteMany({});
 }

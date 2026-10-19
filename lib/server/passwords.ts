@@ -2,7 +2,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 
 /**
  * Password hashing (scrypt, per-user salt, timing-safe compare) — backs the
- * Auth.js credentials provider (auth.ts). If BureauOS later moves to a hosted
+ * Auth.js credentials provider (auth.ts). If Building202 later moves to a hosted
  * identity provider (Clerk / Supabase Auth), this module goes away with it.
  */
 

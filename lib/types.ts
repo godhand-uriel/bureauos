@@ -1,5 +1,5 @@
 /**
- * BureauOS core domain model.
+ * Building202 core domain model.
  *
  * Persisted entities (Case and everything nested inside it, plus UserSettings)
  * are plain serializable objects stored in the local data layer (localStorage
@@ -78,13 +78,52 @@ export interface DocumentRequirement {
   required: boolean;
 }
 
+/**
+ * - official       a statutory/agency deadline. It carries a date ONLY when a
+ *                  source-checked rule was applied to the actual triggering
+ *                  event; otherwise `date` is null → shown as NEEDS VERIFICATION.
+ * - self_reported  a date the user copied from their own notice.
+ * - suggested      a Building202 follow-up target. Not a legal deadline.
+ */
+export type DeadlineKind = "official" | "self_reported" | "suggested";
+
+export interface DeadlineSource {
+  ruleId: string;
+  jurisdiction: string;
+  ruleSummary: string;
+  citation: string;
+  url: string;
+  /** Further primary sources the calculation relies on (absent on older rows). */
+  references?: { label: string; url: string }[];
+  /** Calendar date the rule text was last checked against the source. */
+  checkedOn: string;
+  caveats: string;
+}
+
+export interface DeadlineTrigger {
+  /** Intake answer holding the triggering event's date. */
+  questionId: string;
+  label: string;
+  /** The date the count ran from, or null when it has not been provided. */
+  date: string | null;
+  mayBeFuture: boolean;
+}
+
 export interface Deadline {
   id: string;
+  /** Stable identity across plan regenerations (rule id or slugged title). */
+  key: string;
   title: string;
-  date: string;
+  kind: DeadlineKind;
+  /** Calendar date `YYYY-MM-DD`, or null when it has not been established. */
+  date: string | null;
   note?: string;
-  /** Deadlines from the rule engine are estimates the user must verify. */
+  /** The user confirmed this date against their official notice. */
   verified: boolean;
+  /** Present on official deadlines backed by a source-checked rule. */
+  source?: DeadlineSource;
+  /** Present when the deadline is (or could be) calculated from a trigger date. */
+  trigger?: DeadlineTrigger;
 }
 
 export type TimelineEventType =
@@ -190,9 +229,11 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  /** Demo-grade local hash. Replaced entirely by Clerk/Supabase/Auth.js in production. */
+  /** Always "" on the client — the hash never leaves the server. */
   passwordHash: string;
   role: UserRole;
+  /** Whether TOTP MFA is enrolled (the secret itself is never serialized). */
+  mfaEnabled: boolean;
   usState: string;
   phone: string;
   createdAt: string;
@@ -200,7 +241,7 @@ export interface User {
 }
 
 /* ------------------------------------------------------------------ */
-/* Service packages & billing                                          */
+/* Service tiers                                                       */
 /* ------------------------------------------------------------------ */
 
 export type ServiceTierId =
@@ -212,33 +253,67 @@ export type ServiceTierId =
 export interface ServiceTierDef {
   id: ServiceTierId;
   name: string;
-  priceLabel: string;
-  priceMonthly: number;
   tagline: string;
-  included: string[];
-  notIncluded: string[];
+  /** Requires Building202 staff. Not purchasable; off unless operations enables it. */
   humanAssisted: boolean;
-  highlight?: boolean;
 }
 
-export type SubscriptionStatus = "active" | "canceled";
+/* ------------------------------------------------------------------ */
+/* Purchases & entitlements (real payments — Stripe)                   */
+/* ------------------------------------------------------------------ */
 
-export interface BillingHistoryEntry {
+export type PurchaseStatus =
+  | "pending" // checkout session created, not yet paid
+  | "paid"
+  | "failed"
+  | "expired" // checkout session expired unpaid
+  | "refunded"
+  | "disputed" // chargeback opened — entitlement suspended
+  | "dispute_lost";
+
+export interface Purchase {
   id: string;
-  label: string;
-  amountLabel: string;
-  date: string;
-  kind: "mock_charge" | "mock_refund" | "plan_change";
+  userId: string | null;
+  caseId: string | null;
+  product: string;
+  amountCents: number;
+  currency: string;
+  status: PurchaseStatus;
+  /** false = Stripe test mode or a development simulation; no real money moved. */
+  livemode: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface Subscription {
+export interface Entitlement {
   id: string;
   userId: string;
-  tier: ServiceTierId;
-  status: SubscriptionStatus;
-  startedAt: string;
-  updatedAt: string;
-  history: BillingHistoryEntry[];
+  caseId: string;
+  product: string;
+  status: "active" | "revoked";
+  source: "stripe" | "staff_grant" | "dev_simulation";
+  grantedAt: string;
+  revokedAt: string | null;
+  revokeReason: string | null;
+}
+
+/**
+ * What this deployment can actually do, computed on the server from its
+ * configuration. The UI renders from this instead of assuming a service is
+ * live — an unconfigured integration is shown as unavailable, never faked.
+ */
+export interface Capabilities {
+  /** "live": real charges. "test": Stripe test mode. "off": not configured. */
+  payments: "live" | "test" | "off";
+  casePass: { priceCents: number; currency: string; name: string };
+  /** Human-assisted packages and professional review are offered. */
+  humanReview: boolean;
+  /** "live": real provider. "mock": development outbox. "off": nothing is sent. */
+  emailDelivery: "live" | "mock" | "off";
+  sms: false;
+  uploads: false;
+  /** Development-only conveniences (demo login, simulated payment, data reset). */
+  devTools: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -360,7 +435,7 @@ export interface DisclaimerAcceptance {
 }
 
 /* ------------------------------------------------------------------ */
-/* Notifications (mock outbox; Resend/Twilio/SES adapters later)       */
+/* Notifications (email via Resend; see lib/server/notify.ts)          */
 /* ------------------------------------------------------------------ */
 
 export type NotificationEventType =
@@ -370,18 +445,29 @@ export type NotificationEventType =
   | "support_update"
   | "review_update"
   | "billing_update"
+  | "account_security"
   | "welcome";
+
+/**
+ * - queued     waiting to be delivered (or retried)
+ * - sent       accepted by the email provider
+ * - failed     the provider refused it, or retries ran out
+ * - skipped    no email provider is configured in production — nothing was sent
+ * - mock_sent  development only: recorded in the local outbox, nothing was sent
+ */
+export type NotificationStatus = "queued" | "sent" | "failed" | "skipped" | "mock_sent";
 
 export interface NotificationEvent {
   id: string;
   userId: string;
   type: NotificationEventType;
+  /** Email only. SMS is not offered; older rows may say "sms". */
   channel: "email" | "sms";
   subject: string;
   body: string;
   createdAt: string;
-  /** "mock_sent" — recorded in the local outbox; no real delivery in the MVP. */
-  status: "queued" | "mock_sent";
+  status: NotificationStatus;
+  sentAt: string | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -423,6 +509,12 @@ export interface JurisdictionRule {
   officialLinks: { label: string; url: string }[];
   disclaimer: string;
   lastUpdated: string;
+  /**
+   * "source_checked": text checked against the linked source on `lastUpdated`
+   * (an engineering check, pending counsel review) — shown to customers.
+   * "unverified_sample": illustrative content, never shown as guidance.
+   */
+  reviewStatus: "source_checked" | "unverified_sample";
 }
 
 /* ------------------------------------------------------------------ */
@@ -443,11 +535,20 @@ export interface DocumentTemplate {
   required: boolean;
 }
 
-export interface DeadlineTemplate {
-  title: string;
-  inDays: number;
-  note?: string;
-}
+/**
+ * What a navigator's rule logic may ask the plan engine to track. Note what
+ * is NOT expressible here: an "official" deadline with a hand-picked date.
+ * Official dates come only from the rule registry (lib/deadline-rules.ts).
+ */
+export type DeadlineSpec =
+  /** A follow-up target N days out. Labeled as a suggestion, never as a deadline. */
+  | { kind: "suggested"; title: string; inDays: number; note?: string }
+  /** A date the user entered from their own notice (an intake answer). */
+  | { kind: "self_reported"; title: string; date: unknown; note?: string }
+  /** A source-checked rule; the engine calculates it or marks it NEEDS VERIFICATION. */
+  | { kind: "official"; ruleId: string; note?: string }
+  /** A real deadline exists but Building202 has no verified rule for it — always NEEDS VERIFICATION. */
+  | { kind: "official_unavailable"; key: string; title: string; note: string };
 
 export interface LetterField {
   id: string;
@@ -458,14 +559,20 @@ export interface LetterField {
   fromAnswer?: string;
 }
 
+/**
+ * Letter template metadata — what the form needs. The letter text itself is
+ * NOT here: navigator content ships to the browser, so the bodies live in the
+ * server-only lib/server/letters.ts and are rendered after an entitlement check.
+ */
 export interface LetterTemplate {
   id: string;
   name: string;
   description: string;
   fields: LetterField[];
-  /** Render the letter body. Values keyed by field id; blanks become [BRACKETED PROMPTS]. */
-  render: (values: Record<string, string>, ctx: LetterContext) => string;
 }
+
+/** Renders a letter body. Values keyed by field id; blanks become [BRACKETED PROMPTS]. */
+export type LetterRenderer = (values: Record<string, string>, ctx: LetterContext) => string;
 
 export interface LetterContext {
   senderName: string;
@@ -479,7 +586,7 @@ export interface PlanResult {
   nextActions: { title: string; detail: string }[];
   extraTasks: TaskTemplate[];
   extraDocuments: DocumentTemplate[];
-  deadlines: DeadlineTemplate[];
+  deadlines: DeadlineSpec[];
   riskFlags: Omit<RiskFlag, "id">[];
   suggestedLetterTemplateId?: string;
   timelineEntries: { title: string; detail?: string }[];
@@ -494,6 +601,11 @@ export interface NavigatorDef {
   /** Lucide icon key resolved in components/navigator-icon.tsx */
   icon: string;
   accent: string; // tailwind-safe hsl string for badges/accents
+  /**
+   * "live": validated for the commercial launch. "preview": general
+   * organization tools only — no paid products, no verified deadline rules.
+   */
+  launchStatus: "live" | "preview";
   problems: string[];
   questions: IntakeQuestion[];
   baseTasks: TaskTemplate[];

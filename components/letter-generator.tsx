@@ -1,29 +1,33 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Copy, FilePen, Save } from "lucide-react";
+import { Check, Copy, FilePen, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Callout } from "@/components/callout";
-import { todayLong } from "@/lib/utils";
+import { useBureauStore } from "@/lib/store";
 import type { AnswerValue, LetterTemplate } from "@/lib/types";
 
 interface LetterGeneratorProps {
+  caseId: string;
   template: LetterTemplate;
-  caseTitle: string;
-  senderName: string;
   answers: Record<string, AnswerValue>;
-  onSave: (title: string, body: string) => void;
 }
 
 /**
  * Three-step letter workflow: fill fields (prefilled from intake answers
  * where mapped) → generate → edit/copy/save.
+ *
+ * The letter is rendered by the server, which holds the letter text and
+ * checks the case's entitlement — this component only collects the fields.
  */
-export function LetterGenerator({ template, caseTitle, senderName, answers, onSave }: LetterGeneratorProps) {
+export function LetterGenerator({ caseId, template, answers }: LetterGeneratorProps) {
+  const renderLetter = useBureauStore((s) => s.renderLetter);
+  const saveLetter = useBureauStore((s) => s.saveLetter);
+
   const initialValues = useMemo(() => {
     const v: Record<string, string> = {};
     for (const f of template.fields) {
@@ -38,12 +42,35 @@ export function LetterGenerator({ template, caseTitle, senderName, answers, onSa
 
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   const [body, setBody] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"generate" | "save" | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const generate = () => {
-    setBody(template.render(values, { senderName, todayLong: todayLong(), caseTitle }));
+  const generate = async () => {
+    setBusy("generate");
+    setError(null);
+    const result = await renderLetter(caseId, template.id, values);
+    setBusy(null);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setBody(result.body);
     setSaved(false);
+  };
+
+  const save = async () => {
+    if (!body) return;
+    setBusy("save");
+    setError(null);
+    const result = await saveLetter(caseId, { templateId: template.id, title: template.name, body });
+    setBusy(null);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setSaved(true);
   };
 
   const copy = async () => {
@@ -93,9 +120,16 @@ export function LetterGenerator({ template, caseTitle, senderName, answers, onSa
           ))}
         </div>
 
-        <Button onClick={generate} variant={body ? "secondary" : "default"}>
+        <Button onClick={generate} variant={body ? "secondary" : "default"} disabled={busy !== null}>
+          {busy === "generate" && <Loader2 className="h-4 w-4 animate-spin" />}
           {body ? "Regenerate letter" : "Generate letter"}
         </Button>
+
+        {error && (
+          <p role="alert" className="text-sm text-red-400">
+            {error}
+          </p>
+        )}
 
         {body !== null && (
           <div className="space-y-3">
@@ -117,14 +151,8 @@ export function LetterGenerator({ template, caseTitle, senderName, answers, onSa
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 {copied ? "Copied" : "Copy letter"}
               </Button>
-              <Button
-                onClick={() => {
-                  onSave(template.name, body);
-                  setSaved(true);
-                }}
-                disabled={saved}
-              >
-                <Save className="h-4 w-4" />
+              <Button onClick={save} disabled={saved || busy !== null}>
+                {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {saved ? "Saved to case" : "Save to case"}
               </Button>
             </div>

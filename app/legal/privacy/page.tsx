@@ -1,57 +1,94 @@
 import type { Metadata } from "next";
-import { Callout } from "@/components/callout";
+import { LegalDraftNotice } from "@/components/legal-draft-notice";
+import { DISCLAIMER_VERSION } from "@/lib/constants";
 
-export const metadata: Metadata = { title: "Privacy Policy" };
+export const metadata: Metadata = { title: "Privacy Policy", alternates: { canonical: "/legal/privacy" } };
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
+      <div className="mt-2 space-y-2">{children}</div>
+    </div>
+  );
+}
 
 export default function PrivacyPage() {
   return (
     <article className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Version 2026-07-07.v1 · Demo MVP policy</p>
+        <p className="mt-2 text-sm text-muted-foreground">Version {DISCLAIMER_VERSION} · Draft</p>
       </div>
 
-      <Callout variant="warning" title="Demo document">
-        This is a plain-language placeholder for the BureauOS MVP. Before launch, replace it with a
-        policy reviewed by counsel and aligned to your actual data practices.
-      </Callout>
+      <LegalDraftNotice
+        openItems={[
+          "The business's legal name and a privacy contact address",
+          "The hosting and database providers, named",
+          "How long payment records are kept, and state-specific privacy rights wording",
+        ]}
+      />
 
-      <section className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">1. Where your data lives (in this demo)</h2>
-          <p className="mt-2">
-            In this local MVP, everything — your account, cases, intake answers, document metadata,
-            letters, tickets — is stored in a local database (SQLite) on the machine running the
-            app, behind access-controlled API routes. Nothing is transmitted to external services,
-            and attached files never leave your device (only their name, type, size, and category
-            are tracked).
+      <section className="space-y-5 text-sm leading-relaxed text-muted-foreground">
+        <Section title="What Building202 stores">
+          <ul className="list-disc space-y-1 pl-5">
+            <li>Your account: name, email address, state, and a one-way hash of your password (never the password itself).</li>
+            <li>
+              What you enter in your cases: intake answers, dates, notes, checklist progress, and
+              letters. This can include sensitive details about your job, pay, health coverage, or
+              benefits — enter only what you need.
+            </li>
+            <li>Support tickets and the replies to them.</li>
+            <li>A record of which terms version you accepted, and when.</li>
+            <li>A log of emails Building202 sent you.</li>
+            <li>Purchase records: amount, date, and status. Never card details.</li>
+          </ul>
+          <p>
+            Building202 does not store uploaded documents — there is no upload feature. It has no
+            advertising or third-party analytics, and it does not sell or rent your data.
           </p>
-        </div>
-        <div>
-          <h2 className="text-base font-semibold text-foreground">2. What changes in production</h2>
-          <p className="mt-2">
-            A hosted version of BureauOS would store your data in an encrypted database and encrypted
-            file storage, use it only to provide the service, and never sell it. Case data is
-            sensitive by nature (housing, employment, health, benefits) and would be treated as
-            confidential, with access limited to staff who need it to help you.
+        </Section>
+
+        <Section title="Who else handles it">
+          <ul className="list-disc space-y-1 pl-5">
+            <li>Stripe processes payments. Your card details go to Stripe, not to Building202.</li>
+            <li>Resend delivers email: it receives your email address and the message.</li>
+            <li>
+              A rate-limiting service may receive a key derived from your IP address, used only to
+              block abusive traffic.
+            </li>
+            <li>The hosting and database providers store the data on Building202&apos;s behalf.</li>
+          </ul>
+          <p>
+            Building202 staff can see your case to answer support requests. Staff actions on your case
+            are recorded in an audit log, and staff accounts must use two-factor sign-in.
           </p>
-        </div>
-        <div>
-          <h2 className="text-base font-semibold text-foreground">3. Notifications</h2>
-          <p className="mt-2">
-            Email/SMS notifications are simulated in the demo. In production, your contact details
-            would be shared with delivery providers (e.g. Resend, Twilio) solely to deliver the
-            notifications you opt into.
+        </Section>
+
+        <Section title="How long it is kept">
+          <p>
+            Your account and cases are kept until you delete them. Email logs are removed after about
+            six months, and checkout attempts that were never paid after about 30 days. When you
+            delete your account, your cases and everything in them are deleted. Records of payments
+            are kept for financial record-keeping, with your name and email removed from them.
           </p>
-        </div>
-        <div>
-          <h2 className="text-base font-semibold text-foreground">4. Your controls</h2>
-          <p className="mt-2">
-            You can delete all local data at any time from Settings → Data. In production you would
-            be able to export and delete your account data, and notification preferences are always
-            under your control.
+        </Section>
+
+        <Section title="Your choices">
+          <ul className="list-disc space-y-1 pl-5">
+            <li>Download everything Building202 holds about your account: Settings → Your data.</li>
+            <li>Delete a single case from the case page, or your whole account from Settings.</li>
+            <li>Choose which emails you receive: Settings → Notifications.</li>
+          </ul>
+        </Section>
+
+        <Section title="Security">
+          <p>
+            Connections are encrypted (HTTPS). Passwords are stored only as salted hashes, and
+            changing your password signs out every device. No system is perfectly secure; if
+            Building202 learns of a breach affecting your data, it will tell you as the law requires.
           </p>
-        </div>
+        </Section>
       </section>
     </article>
   );

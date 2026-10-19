@@ -1,5 +1,4 @@
 import type { NavigatorDef, PlanResult } from "@/lib/types";
-import { daysUntil } from "@/lib/utils";
 
 const insuranceDenial: NavigatorDef = {
   slug: "insurance-denial",
@@ -10,6 +9,7 @@ const insuranceDenial: NavigatorDef = {
     "Capture the denial details, track the stated reasons, build your evidence file, watch the appeal deadline, and generate a structured appeal letter — health, auto, home, or disability claims.",
   icon: "shield",
   accent: "0 84% 60%",
+  launchStatus: "preview",
   problems: [
     "Claim denied and the letter is confusing",
     "Appeal deadline approaching",
@@ -143,47 +143,10 @@ const insuranceDenial: NavigatorDef = {
         { id: "argument", label: "Why the denial is wrong", multiline: true, fromAnswer: "situation_notes", placeholder: "Reference policy language, medical necessity, correct facts…" },
         { id: "evidence_list", label: "Evidence enclosed (one per line)", multiline: true, placeholder: "Denial letter copy\nLetter from Dr. Smith\nMedical records 3/2–4/15" },
       ],
-      render: (v, ctx) => `${ctx.todayLong}
-
-${v.insurer_name || "[INSURER / APPEALS DEPARTMENT]"}
-${v.insurer_address || "[APPEALS MAILING ADDRESS]"}
-
-Re: FORMAL APPEAL of Claim Denial
-Policy Number: ${v.policy_number || "[POLICY NUMBER]"}
-Claim Number: ${v.claim_number || "[CLAIM NUMBER]"}
-Denial Letter Dated: ${v.denial_date || "[DENIAL DATE]"}
-
-To Whom It May Concern:
-
-I am writing to formally appeal the denial of the claim referenced above. Please treat this letter as a request for a full internal review of the decision.
-
-The denial letter states the claim was denied because:
-${v.denial_reason || "[QUOTE THE DENIAL REASON FROM THE LETTER]"}
-
-I believe this denial is incorrect for the following reasons:
-${v.argument || "[EXPLAIN WHY THE CLAIM SHOULD BE COVERED — REFERENCE POLICY LANGUAGE AND FACTS]"}
-
-In support of this appeal, I am enclosing:
-${v.evidence_list || "[LIST EACH ENCLOSED DOCUMENT]"}
-
-I request that you:
-1. Conduct a full review of this claim, including all enclosed documentation.
-2. Provide the specific policy provisions relied upon if the denial is upheld.
-3. Provide a copy of all documents, guidelines, and records used in your review.
-4. Respond in writing within the timeframe required by my policy and applicable law.
-
-Please confirm receipt of this appeal. I can be reached at the contact information below.
-
-Sincerely,
-
-${ctx.senderName}
-[YOUR ADDRESS / PHONE / EMAIL]
-
-Enclosures: as listed above`,
     },
   ],
   disclaimer:
-    "BureauOS helps you organize your denial, evidence, and deadlines. It is not legal advice and cannot guarantee an appeal outcome. Appeal rights and deadlines vary by policy and state — verify them on your denial letter and policy, and consider your state insurance department's free consumer help line.",
+    "Building202 helps you organize your denial, evidence, and deadlines. It is not legal advice and cannot guarantee an appeal outcome. Appeal rights and deadlines vary by policy and state — verify them on your denial letter and policy, and consider your state insurance department's free consumer help line.",
   buildPlan: (a): PlanResult => {
     const type = (a.insurance_type as string) || "other";
     const reason = (a.denial_reason as string) || "other";
@@ -224,7 +187,7 @@ Enclosures: as listed above`,
         { title: "File a complaint with your state insurance department", detail: "State insurance regulators take consumer complaints seriously and insurers respond to them. It's free and can run in parallel with external review." },
         { title: "Assemble the complete record", detail: "Every letter, denial, appeal, and call note in chronological order — external reviewers decide on the written record." },
       ];
-      plan.deadlines.push({ title: "External review request window", inDays: 60, note: "Estimate — the real window is on your final denial letter. Verify it now." });
+      plan.deadlines.push({ kind: "official_unavailable", key: "external-review-window", title: "External review request window", note: "Building202 has no verified rule for this window. It is stated on your final denial letter — find it there." });
     } else {
       plan.nextActions = [
         { title: "Pin down the appeal deadline", detail: deadlineKnown ? "You have the stated deadline — put every step on a schedule that finishes at least a week before it." : "Read the denial letter and your policy for the appeal window (often 180 days for health plans, shorter for others). If it's not stated, call and get it with a reference number." },
@@ -248,9 +211,9 @@ Enclosures: as listed above`,
     }
 
     if (deadlineKnown && typeof a.appeal_deadline === "string" && a.appeal_deadline) {
-      plan.deadlines.push({ title: "Appeal deadline (from denial letter)", inDays: daysUntil(a.appeal_deadline), note: `You entered ${a.appeal_deadline}. Confirm against the letter and finish the appeal at least 7 days before.` });
+      plan.deadlines.push({ kind: "self_reported", title: "Appeal deadline (from denial letter)", date: a.appeal_deadline, note: "The date you entered from your denial letter. Confirm it against the letter and finish the appeal at least 7 days before." });
     } else if (!alreadyAppealed) {
-      plan.deadlines.push({ title: "Confirm the appeal deadline", inDays: 5, note: "Find it on the letter/policy or get it from the insurer in writing." });
+      plan.deadlines.push({ kind: "official_unavailable", key: "appeal-deadline", title: "Appeal deadline", note: "Not established. Find it on the denial letter or policy, or get it from the insurer in writing." });
       plan.riskFlags.push({ label: "Unknown appeal deadline", detail: "Appeal windows are strict and some are short. Until confirmed, act as if the deadline is 30 days from the denial date.", severity: "critical" });
     }
 

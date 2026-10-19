@@ -12,9 +12,9 @@ import { uid } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 /**
- * Assistant chat. Provider is swappable: `ruleBasedProvider` runs locally with
- * no API keys; a model-backed provider (Anthropic/OpenAI/OpenRouter/local)
- * implements the same interface behind an API route later.
+ * Routing helper. It matches keywords in what the user typed to one of the
+ * navigators — fixed rules running in the browser, not an AI model, and it
+ * is labeled that way on the page.
  */
 export default function AssistantPage() {
   const router = useRouter();
@@ -61,7 +61,7 @@ export default function AssistantPage() {
           Assistant
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Describe your situation and get routed to the right navigator — no jargon needed.
+          Describe your situation and get pointed to the right navigator.
         </p>
       </div>
 
@@ -137,8 +137,9 @@ export default function AssistantPage() {
 
       <div className="pt-3">
         <Callout variant="info">
-          This assistant runs on local rules — no AI service is connected in the MVP, and it never
-          gives legal advice. The provider interface is ready for Anthropic/OpenAI/OpenRouter later.
+          This helper matches keywords to a navigator using fixed rules. It is not an AI model, it
+          does not understand your full situation, and it never gives legal advice. What you type
+          here stays in your browser and is not saved.
         </Callout>
       </div>
     </div>

@@ -5,8 +5,13 @@ import type {
   AnswerValue,
   Case,
   CaseStatus,
+  Deadline,
+  DeadlineKind,
+  DeadlineSource,
+  DeadlineTrigger,
   DisclaimerAcceptance,
   DocumentStatus,
+  Entitlement,
   FileCategory,
   FileStatus,
   NavigatorSlug,
@@ -14,10 +19,11 @@ import type {
   NotificationEventType,
   NotificationPreferences,
   Priority,
+  Purchase,
+  PurchaseStatus,
   ReviewRequest,
   ReviewStatus,
   ServiceTierId,
-  Subscription,
   SupportTicket,
   TicketCategory,
   TicketStatus,
@@ -26,6 +32,7 @@ import type {
   User,
 } from "@/lib/types";
 import { DEFAULT_NOTIFICATION_PREFS } from "@/lib/constants";
+import { dateOnlyFromStored, dateOnlyToUtcNoon } from "@/lib/dates";
 
 /**
  * Domain ⇄ database mapping.
@@ -65,12 +72,6 @@ export const reviewInclude = {
 
 export type DbReview = Prisma.ReviewRequestGetPayload<{ include: typeof reviewInclude }>;
 
-export const subscriptionInclude = {
-  payments: { orderBy: { createdAt: "asc" as const } },
-} satisfies Prisma.SubscriptionInclude;
-
-export type DbSubscription = Prisma.SubscriptionGetPayload<{ include: typeof subscriptionInclude }>;
-
 export type DbUserWithPrefs = Prisma.UserGetPayload<{ include: { notificationPrefs: true } }>;
 
 /* ------------------------------ to domain ------------------------------ */
@@ -95,6 +96,7 @@ export function userToDomain(u: DbUserWithPrefs): User {
     email: u.email,
     passwordHash: "", // never serialized to clients
     role: u.role as User["role"],
+    mfaEnabled: u.mfaEnabled, // the secret (u.mfaSecret) is never serialized
     usState: u.usState,
     phone: u.phone,
     createdAt: iso(u.createdAt),
@@ -104,6 +106,47 @@ export function userToDomain(u: DbUserWithPrefs): User {
 
 function noteToDomain(n: DbCase["adminNotes"][number]): AdminNote {
   return { id: n.id, authorName: n.authorName, body: n.body, createdAt: iso(n.createdAt) };
+}
+
+function parseJsonOr<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+const DEADLINE_KINDS: readonly DeadlineKind[] = ["official", "self_reported", "suggested"];
+
+export function deadlineToDomain(d: DbCase["deadlines"][number]): Deadline {
+  return {
+    id: d.id,
+    key: d.key,
+    title: d.title,
+    // Rows written before deadline kinds existed were engine estimates:
+    // they surface as "suggested", never as official.
+    kind: DEADLINE_KINDS.includes(d.kind as DeadlineKind) ? (d.kind as DeadlineKind) : "suggested",
+    date: d.date ? dateOnlyFromStored(d.date) : null,
+    note: d.note ?? undefined,
+    verified: d.verified,
+    source: parseJsonOr<DeadlineSource | undefined>(d.sourceJson, undefined),
+    trigger: parseJsonOr<DeadlineTrigger | undefined>(d.triggerJson, undefined),
+  };
+}
+
+/** Column values for creating/updating a Deadline row from the domain shape. */
+export function deadlineToRow(d: Deadline) {
+  return {
+    key: d.key,
+    title: d.title,
+    kind: d.kind,
+    date: d.date ? dateOnlyToUtcNoon(d.date) : null,
+    note: d.note ?? null,
+    verified: d.verified,
+    sourceJson: d.source ? JSON.stringify(d.source) : null,
+    triggerJson: d.trigger ? JSON.stringify(d.trigger) : null,
+  };
 }
 
 export function caseToDomain(c: DbCase, opts: { includeAdminNotes: boolean }): Case {
@@ -155,13 +198,7 @@ export function caseToDomain(c: DbCase, opts: { includeAdminNotes: boolean }): C
       required: d.required,
       status: d.status as DocumentStatus,
     })),
-    deadlines: c.deadlines.map((d) => ({
-      id: d.id,
-      title: d.title,
-      date: iso(d.date),
-      note: d.note ?? undefined,
-      verified: d.verified,
-    })),
+    deadlines: c.deadlines.map(deadlineToDomain),
     letters: c.letters.map((l) => ({
       id: l.id,
       templateId: l.templateId,
@@ -230,21 +267,33 @@ export function fileToDomain(f: Prisma.UploadedFileGetPayload<object>): Uploaded
   };
 }
 
-export function subscriptionToDomain(s: DbSubscription): Subscription {
+/** Stripe identifiers stay on the server — the client gets status and amounts only. */
+export function purchaseToDomain(p: Prisma.PurchaseGetPayload<object>): Purchase {
   return {
-    id: s.id,
-    userId: s.userId,
-    tier: s.tier as ServiceTierId,
-    status: s.status as Subscription["status"],
-    startedAt: iso(s.startedAt),
-    updatedAt: iso(s.updatedAt),
-    history: s.payments.map((p) => ({
-      id: p.id,
-      label: p.label,
-      amountLabel: p.amountLabel,
-      date: iso(p.createdAt),
-      kind: p.kind as Subscription["history"][number]["kind"],
-    })),
+    id: p.id,
+    userId: p.userId,
+    caseId: p.caseId,
+    product: p.product,
+    amountCents: p.amountCents,
+    currency: p.currency,
+    status: p.status as PurchaseStatus,
+    livemode: p.livemode,
+    createdAt: iso(p.createdAt),
+    updatedAt: iso(p.updatedAt),
+  };
+}
+
+export function entitlementToDomain(e: Prisma.EntitlementGetPayload<object>): Entitlement {
+  return {
+    id: e.id,
+    userId: e.userId,
+    caseId: e.caseId,
+    product: e.product,
+    status: e.status === "active" ? "active" : "revoked",
+    source: e.source as Entitlement["source"],
+    grantedAt: iso(e.grantedAt),
+    revokedAt: e.revokedAt ? iso(e.revokedAt) : null,
+    revokeReason: e.revokeReason,
   };
 }
 
@@ -271,6 +320,7 @@ export function notificationToDomain(n: Prisma.NotificationEventGetPayload<objec
     body: n.body,
     createdAt: iso(n.createdAt),
     status: n.status as NotificationEvent["status"],
+    sentAt: n.sentAt ? iso(n.sentAt) : null,
   };
 }
 
@@ -331,13 +381,7 @@ export function caseToCreateData(c: Case): Prisma.CaseCreateInput {
       })),
     },
     deadlines: {
-      create: c.deadlines.map((d) => ({
-        id: d.id,
-        title: d.title,
-        date: new Date(d.date),
-        note: d.note ?? null,
-        verified: d.verified,
-      })),
+      create: c.deadlines.map((d) => ({ id: d.id, ...deadlineToRow(d) })),
     },
     letters: {
       create: c.letters.map((l) => ({

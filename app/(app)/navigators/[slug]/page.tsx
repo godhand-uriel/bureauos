@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Callout } from "@/components/callout";
 import { NavigatorIcon } from "@/components/navigator-icon";
 import { NAVIGATORS, getNavigator } from "@/lib/navigators";
+import { isPaidNavigator } from "@/lib/launch";
+import { Badge } from "@/components/ui/badge";
 
 export function generateStaticParams() {
   return NAVIGATORS.map((n) => ({ slug: n.slug }));
@@ -19,6 +21,8 @@ export default async function NavigatorOverviewPage({
   const { slug } = await params;
   const nav = getNavigator(slug);
   if (!nav) notFound();
+  const live = nav.launchStatus === "live";
+  const paid = isPaidNavigator(nav.slug);
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
@@ -31,7 +35,10 @@ export default async function NavigatorOverviewPage({
           <NavigatorIcon icon={nav.icon} className="h-7 w-7" />
         </div>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">{nav.name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">{nav.name}</h1>
+            {live ? <Badge variant="success">Available</Badge> : <Badge variant="secondary">Preview</Badge>}
+          </div>
           <p className="mt-2 max-w-2xl leading-relaxed text-muted-foreground">{nav.description}</p>
           <Link href={`/cases/new?navigator=${nav.slug}`} className="mt-5 inline-block">
             <Button size="lg">
@@ -41,6 +48,20 @@ export default async function NavigatorOverviewPage({
           </Link>
         </div>
       </div>
+
+      {live ? (
+        <Callout variant="info" title="Where deadline calculations are available">
+          Deadlines are calculated for Florida, from the dates on your own notices and rules checked
+          against their cited sources. In other states you get the same organizing tools, with
+          state deadlines marked NEEDS VERIFICATION instead of calculated.
+        </Callout>
+      ) : (
+        <Callout variant="warning" title="Preview navigator">
+          This navigator offers general organizing tools only. Building202 has not verified deadline
+          rules for it, so no official deadline is calculated here — every date is yours to confirm
+          with the agency or a qualified professional. Nothing is sold for this navigator.
+        </Callout>
+      )}
 
       {/* What it handles */}
       <Card>
@@ -81,7 +102,8 @@ export default async function NavigatorOverviewPage({
             <ListChecks className="h-5 w-5 text-primary" />
             <h3 className="mt-3 text-sm font-semibold">Action plan & checklists</h3>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Personalized next steps, a {nav.baseDocuments.length}-item document checklist, task tracking, and deadline flags.
+              Personalized next steps, a {nav.baseDocuments.length}-item document checklist, task tracking, and
+              {live ? " source-backed deadline tracking." : " deadlines for you to verify."}
             </p>
           </CardContent>
         </Card>
@@ -91,6 +113,7 @@ export default async function NavigatorOverviewPage({
             <h3 className="mt-3 text-sm font-semibold">Letter generator</h3>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {nav.letterTemplates.map((t) => t.name).join(", ")} — editable before you send.
+              {paid && " Part of the optional Case Pass."}
             </p>
           </CardContent>
         </Card>
@@ -116,7 +139,7 @@ export default async function NavigatorOverviewPage({
         </CardContent>
       </Card>
 
-      <Callout variant="info" title="A note on what BureauOS is">
+      <Callout variant="info" title="A note on what Building202 is">
         {nav.disclaimer}
       </Callout>
     </div>

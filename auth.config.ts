@@ -10,8 +10,13 @@ import type { NextAuthConfig } from "next-auth";
  * so role/ownership decisions never rely on a stale token alone.
  */
 export const authConfig = {
+  // The deployment's proxy/platform sets the Host header (Vercel, or a reverse
+  // proxy configured to pass it through). Set AUTH_URL to pin it explicitly.
   trustHost: true,
-  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 30 },
+  // 7-day sessions, refreshed at most daily. Routes re-resolve the user from
+  // the database on every request, so a deleted/demoted account loses access
+  // immediately regardless of token lifetime.
+  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24 },
   pages: { signIn: "/login" },
   providers: [], // credentials provider added in auth.ts (needs Prisma)
   callbacks: {
@@ -19,6 +24,9 @@ export const authConfig = {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role ?? "customer";
+        // The account's session version at sign-in. A password change bumps
+        // the stored value, which invalidates every token carrying an older one.
+        token.sv = (user as { sessionVersion?: number }).sessionVersion ?? 0;
       }
       return token;
     },
@@ -26,6 +34,7 @@ export const authConfig = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = (token.role as "customer" | "admin") ?? "customer";
+        session.user.sessionVersion = typeof token.sv === "number" ? token.sv : 0;
       }
       return session;
     },

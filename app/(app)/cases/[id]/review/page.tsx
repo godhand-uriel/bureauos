@@ -2,7 +2,7 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, CheckCircle2, ClipboardCheck, FileText, Send } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, FileText, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -10,8 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Callout } from "@/components/callout";
 import { DisclaimerGate } from "@/components/disclaimer-gate";
 import { ReviewStatusBadge } from "@/components/platform-badges";
-import { getTier, tierIncludesReview } from "@/lib/packages";
-import { useBureauStore, useCase, useHydrated } from "@/lib/store";
+import { tierIncludesReview } from "@/lib/packages";
+import { useBureauStore, useCapabilities, useCase, useHydrated } from "@/lib/store";
 import { cn, formatDateTime } from "@/lib/utils";
 import type { ReviewStatus } from "@/lib/types";
 
@@ -23,11 +23,41 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
   const kase = useCase(id);
   const review = useBureauStore((s) => s.reviews.find((r) => r.caseId === id));
   const requestReview = useBureauStore((s) => s.requestReview);
+  const caps = useCapabilities();
   const [notes, setNotes] = useState("");
 
-  if (!hydrated || !kase) return null;
+  if (!hydrated || !kase || !caps) return null;
 
-  const tier = getTier(kase.serviceTier);
+  // Human review is a staffed service. When it isn't switched on for this
+  // deployment, say so plainly — no request form, no upsell.
+  if (!caps.humanReview) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold">Professional review</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Not currently offered.</p>
+        </div>
+        <Card>
+          <CardContent className="space-y-3 p-6 text-sm leading-relaxed text-muted-foreground">
+            <p>
+              Building202 is self-service software right now. No one at Building202 reviews your case,
+              your documents, or your letters, and nothing is filed on your behalf.
+            </p>
+            <p>
+              If you need advice about your specific situation, a licensed attorney or a legal aid
+              organization in your state is the right place to ask. For questions about how the app
+              works, open a{" "}
+              <Link href="/support/new" className="text-primary underline underline-offset-2">
+                support ticket
+              </Link>
+              .
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const eligible = tierIncludesReview(kase.serviceTier);
   const requiredDocs = kase.documents.filter((d) => d.required);
   const obtainedRequired = requiredDocs.filter((d) => d.status === "obtained").length;
@@ -42,9 +72,9 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
       </div>
 
       <Callout variant="info" title="What review is (and isn't)">
-        Review is an organizational check of your case file by the BureauOS team and, where
+        Review is an organizational check of your case file by the Building202 team and, where
         available, qualified professionals. It is not legal representation or legal advice, and
-        review availability depends on BureauOS operations. You always decide what to send and when.
+        review availability depends on Building202 operations. You always decide what to send and when.
       </Callout>
 
       {/* Status tracker */}
@@ -93,7 +123,7 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                 <div className="mt-2 space-y-2">
                   {review.reviewerNotes.map((n) => (
                     <div key={n.id} className="rounded-lg border border-violet-500/30 bg-violet-500/10 p-3.5 text-sm">
-                      <p className="text-xs font-semibold text-violet-300">{n.authorName} · BureauOS</p>
+                      <p className="text-xs font-semibold text-violet-300">{n.authorName} · Building202</p>
                       <p className="mt-1 leading-relaxed text-violet-100/90">{n.body}</p>
                       <p className="mt-1.5 text-[10px] text-violet-300/60">{formatDateTime(n.createdAt)}</p>
                     </div>
@@ -140,16 +170,13 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
       {!eligible ? (
         <Card className="border-amber-500/30">
           <CardContent className="p-6">
-            <h3 className="font-semibold">Review isn&apos;t included in {tier.name}</h3>
+            <h3 className="font-semibold">Review isn&apos;t set up for this case</h3>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Professional review is part of Assisted Review and above. Upgrade this case&apos;s service
-              package to submit your file for review.
+              Human-assisted review is arranged case by case with the Building202 team and can&apos;t be
+              purchased online. Contact support if you&apos;d like to ask about it.
             </p>
-            <Link href={`/checkout?plan=assisted_review&case=${kase.id}`} className="mt-4 inline-block">
-              <Button>
-                Upgrade to Assisted Review — $29/mo
-                <ArrowUpRight className="h-4 w-4" />
-              </Button>
+            <Link href="/support/new" className="mt-4 inline-block">
+              <Button variant="outline">Contact support</Button>
             </Link>
           </CardContent>
         </Card>

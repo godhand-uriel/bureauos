@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 /**
- * Zod schemas for persisted BureauOS data. Used to validate anything read
- * back from the local data layer so corrupted storage never crashes the app.
+ * Zod schemas for Building202. The first half defines the domain enums and
+ * shapes; the second half defines the input schema for every API route —
+ * nothing reaches a route handler's logic unvalidated.
  */
 
 export const contactValueSchema = z.object({
@@ -32,30 +33,12 @@ export const caseStatusSchema = z.enum([
 
 export const prioritySchema = z.enum(["low", "medium", "high", "urgent"]);
 
-export const taskSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  description: z.string().optional(),
-  done: z.boolean(),
-  category: z.string().optional(),
-  dueDate: z.string().optional(),
-  createdAt: z.string(),
-});
-
 export const documentRequirementSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().optional(),
   status: z.enum(["needed", "requested", "obtained", "not_applicable"]),
   required: z.boolean(),
-});
-
-export const deadlineSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  date: z.string(),
-  note: z.string().optional(),
-  verified: z.boolean(),
 });
 
 export const timelineEventSchema = z.object({
@@ -77,32 +60,6 @@ export const timelineEventSchema = z.object({
   date: z.string(),
 });
 
-export const generatedLetterSchema = z.object({
-  id: z.string(),
-  templateId: z.string(),
-  title: z.string(),
-  body: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-
-export const riskFlagSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  detail: z.string(),
-  severity: z.enum(["info", "warning", "critical"]),
-});
-
-export const actionPlanSchema = z.object({
-  generatedAt: z.string(),
-  situationSummary: z.string(),
-  priority: prioritySchema,
-  nextActions: z.array(z.object({ title: z.string(), detail: z.string() })),
-  riskFlags: z.array(riskFlagSchema),
-  suggestedLetterTemplateId: z.string().optional(),
-  disclaimer: z.string(),
-});
-
 export const serviceTierIdSchema = z.enum([
   "self_service",
   "assisted_review",
@@ -117,46 +74,6 @@ export const adminNoteSchema = z.object({
   createdAt: z.string(),
 });
 
-export const caseSchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  navigatorSlug: z.enum([
-    "dmv",
-    "job-separation",
-    "small-business",
-    "insurance-denial",
-    "veteran-benefits",
-    "tenant-rights",
-  ]),
-  title: z.string(),
-  status: caseStatusSchema,
-  priority: prioritySchema,
-  serviceTier: serviceTierIdSchema,
-  assignedTo: z.string().nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  intake: z.object({
-    answers: z.record(z.string(), answerValueSchema),
-    currentStep: z.number(),
-    completed: z.boolean(),
-  }),
-  plan: actionPlanSchema.nullable(),
-  tasks: z.array(taskSchema),
-  documents: z.array(documentRequirementSchema),
-  deadlines: z.array(deadlineSchema),
-  letters: z.array(generatedLetterSchema),
-  timeline: z.array(timelineEventSchema),
-  adminNotes: z.array(adminNoteSchema),
-});
-
-/** Legacy v1 case shape (pre-accounts) — used only for one-time migration. */
-export const legacyCaseSchema = caseSchema.omit({
-  userId: true,
-  serviceTier: true,
-  assignedTo: true,
-  adminNotes: true,
-});
-
 export const notificationPreferencesSchema = z.object({
   emailReminders: z.boolean(),
   smsReminders: z.boolean(),
@@ -164,36 +81,6 @@ export const notificationPreferencesSchema = z.object({
   caseStatusAlerts: z.boolean(),
   missingDocumentReminders: z.boolean(),
   supportTicketUpdates: z.boolean(),
-});
-
-export const userSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  email: z.string(),
-  passwordHash: z.string(),
-  role: z.enum(["customer", "admin"]),
-  usState: z.string(),
-  phone: z.string(),
-  createdAt: z.string(),
-  notificationPrefs: notificationPreferencesSchema,
-});
-
-export const subscriptionSchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  tier: serviceTierIdSchema,
-  status: z.enum(["active", "canceled"]),
-  startedAt: z.string(),
-  updatedAt: z.string(),
-  history: z.array(
-    z.object({
-      id: z.string(),
-      label: z.string(),
-      amountLabel: z.string(),
-      date: z.string(),
-      kind: z.enum(["mock_charge", "mock_refund", "plan_change"]),
-    }),
-  ),
 });
 
 export const supportTicketSchema = z.object({
@@ -262,67 +149,6 @@ export const uploadedFileSchema = z.object({
   notes: z.string(),
 });
 
-export const disclaimerAcceptanceSchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  caseId: z.string().nullable(),
-  version: z.string(),
-  acceptedTerms: z.boolean(),
-  acceptedPrivacy: z.boolean(),
-  acceptedDisclaimer: z.boolean(),
-  acceptedAt: z.string(),
-});
-
-export const notificationEventSchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  type: z.enum([
-    "deadline_alert",
-    "case_status",
-    "missing_document",
-    "support_update",
-    "review_update",
-    "billing_update",
-    "welcome",
-  ]),
-  channel: z.enum(["email", "sms"]),
-  subject: z.string(),
-  body: z.string(),
-  createdAt: z.string(),
-  status: z.enum(["queued", "mock_sent"]),
-});
-
-/** v2 persisted state: user-scoped, customer-service platform shape. */
-export const persistedStateSchema = z.object({
-  users: z.array(userSchema),
-  sessionUserId: z.string().nullable(),
-  cases: z.array(caseSchema),
-  subscriptions: z.array(subscriptionSchema),
-  tickets: z.array(supportTicketSchema),
-  reviews: z.array(reviewRequestSchema),
-  files: z.array(uploadedFileSchema),
-  acceptances: z.array(disclaimerAcceptanceSchema),
-  notifications: z.array(notificationEventSchema),
-  seeded: z.boolean(),
-  migratedV1: z.boolean(),
-});
-
-export type PersistedState = z.infer<typeof persistedStateSchema>;
-
-/** Legacy v1 persisted state — used only for one-time migration. */
-export const legacyPersistedStateSchema = z.object({
-  cases: z.array(legacyCaseSchema),
-  settings: z
-    .object({
-      displayName: z.string(),
-      email: z.string(),
-      usState: z.string(),
-      demoMode: z.boolean(),
-    })
-    .optional(),
-  seeded: z.boolean().optional(),
-});
-
 /* ------------------------------------------------------------------ */
 /* API input schemas (validated at every route boundary)               */
 /* ------------------------------------------------------------------ */
@@ -343,13 +169,24 @@ export const navigatorSlugSchema = z.enum([
 export const signupInputSchema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().trim().email().max(200),
-  password: z.string().min(8).max(200),
+  password: z.string().min(10).max(200),
   usState: z.string().trim().max(60).default(""),
 });
 
 export const loginInputSchema = z.object({
   email: z.string().trim().email().max(200),
   password: z.string().min(1).max(200),
+  /** TOTP code — required when the account has MFA enrolled. */
+  totp: z
+    .string()
+    .trim()
+    .max(12)
+    .optional()
+    .transform((v) => (v === "" ? undefined : v)),
+});
+
+export const mfaVerifyInputSchema = z.object({
+  code: z.string().trim().min(6).max(12),
 });
 
 export const demoLoginInputSchema = z.object({
@@ -361,17 +198,53 @@ export const profileUpdateSchema = z.object({
   email: z.string().trim().email().max(200).optional(),
   usState: z.string().trim().max(60).optional(),
   phone: z.string().trim().max(40).optional(),
+  /** Required only when `email` changes the sign-in address. */
+  currentPassword: z.string().min(1).max(200).optional(),
 });
 
-export const prefsUpdateSchema = notificationPreferencesSchema.partial();
+export const changePasswordInputSchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(10).max(200),
+});
+
+export const passwordResetRequestSchema = z.object({
+  email: z.string().trim().email().max(200),
+});
+
+export const passwordResetConfirmSchema = z.object({
+  token: z.string().min(20).max(200),
+  newPassword: z.string().min(10).max(200),
+});
+
+export const deleteAccountInputSchema = z.object({
+  password: z.string().min(1).max(200),
+  /** The user types DELETE — a deliberate act, not a stray click. */
+  confirm: z.literal("DELETE"),
+});
+
+/** SMS and missing-document reminders are not offered, so they can't be switched on. */
+export const prefsUpdateSchema = notificationPreferencesSchema
+  .omit({ smsReminders: true, missingDocumentReminders: true })
+  .partial();
 
 export const acceptanceInputSchema = z.object({
   id: clientId.optional(),
   caseId: z.string().max(64).nullable(),
 });
 
-export const billingInputSchema = z.object({
-  tier: serviceTierIdSchema,
+/** A purchase request names a case and nothing else — never a price or product. */
+export const checkoutInputSchema = z.object({
+  caseId: z.string().min(1).max(64),
+});
+
+export const renderLetterInputSchema = z.object({
+  templateId: z.string().min(1).max(80),
+  values: z.record(z.string().max(80), z.string().max(5_000)).default({}),
+  /** The writer's calendar date (YYYY-MM-DD), used to date the letter. */
+  localDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 export const createCaseInputSchema = z.object({
@@ -386,13 +259,23 @@ export const caseActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("set_tier"), tier: serviceTierIdSchema }),
   z.object({ type: z.literal("assign"), staffName: z.string().trim().max(120).nullable() }),
   z.object({ type: z.literal("add_admin_note"), id: clientId.optional(), body: bodyText }),
+  /** Staff override: unlock the Case Pass without a payment (audited). */
+  z.object({ type: z.literal("grant_case_pass"), reason: z.string().trim().min(3).max(300) }),
+  z.object({ type: z.literal("revoke_case_pass"), reason: z.string().trim().min(3).max(300) }),
   z.object({
     type: z.literal("save_intake"),
     answers: z.record(z.string().max(80), answerValueSchema),
     step: z.number().int().min(0).max(200),
   }),
   z.object({ type: z.literal("complete_intake") }),
+  z.object({ type: z.literal("reopen_intake") }),
   z.object({ type: z.literal("regenerate_plan") }),
+  z.object({
+    type: z.literal("set_trigger_date"),
+    questionId: z.string().min(1).max(80),
+    /** Calendar date, YYYY-MM-DD. */
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  }),
   z.object({ type: z.literal("toggle_task"), taskId: clientId }),
   z.object({ type: z.literal("add_task"), id: clientId, title: z.string().trim().min(1).max(300) }),
   z.object({
@@ -447,21 +330,6 @@ export const reviewActionSchema = z.discriminatedUnion("type", [
 ]);
 
 export type ReviewActionInput = z.infer<typeof reviewActionSchema>;
-
-export const createFileInputSchema = z.object({
-  id: clientId.optional(),
-  caseId: z.string().max(64),
-  name: z.string().trim().min(1).max(300),
-  fileType: z.string().max(150),
-  sizeLabel: z.string().max(40),
-  category: uploadedFileSchema.shape.category,
-  notes: z.string().max(1_000).default(""),
-});
-
-export const fileUpdateInputSchema = z.object({
-  status: uploadedFileSchema.shape.status,
-  notes: z.string().max(1_000).optional(),
-});
 
 export const devResetInputSchema = z.object({
   reseed: z.boolean(),

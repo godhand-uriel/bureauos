@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { FileStatus, ReviewStatus, ServiceTierId, TicketCategory, TicketStatus } from "@/lib/types";
+import type { ReviewStatus, ServiceTierId, TicketCategory, TicketStatus } from "@/lib/types";
 import { getTier } from "@/lib/packages";
 
 export const TICKET_CATEGORY_LABELS: Record<TicketCategory, string> = {
@@ -35,18 +35,6 @@ const REVIEW: Record<ReviewStatus, { label: string; variant: "default" | "second
 
 export function ReviewStatusBadge({ status }: { status: ReviewStatus }) {
   const cfg = REVIEW[status];
-  return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
-}
-
-const FILE: Record<FileStatus, { label: string; variant: "secondary" | "success" | "warning" | "destructive" | "info" }> = {
-  uploaded: { label: "Uploaded", variant: "info" },
-  pending_review: { label: "Pending review", variant: "warning" },
-  verified: { label: "Verified", variant: "success" },
-  rejected: { label: "Needs replacement", variant: "destructive" },
-};
-
-export function FileStatusBadge({ status }: { status: FileStatus }) {
-  const cfg = FILE[status];
   return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
 }
 

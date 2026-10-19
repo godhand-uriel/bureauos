@@ -7,16 +7,14 @@ import { Progress } from "@/components/ui/progress";
 import { NavigatorIcon } from "@/components/navigator-icon";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
 import { getNavigator } from "@/lib/navigators";
-import { caseProgress } from "@/lib/plan-engine";
+import { caseProgress, headlineDeadline } from "@/lib/plan-engine";
+import { relativeDay } from "@/lib/dates";
 import type { Case } from "@/lib/types";
-import { relativeDeadline } from "@/lib/utils";
 
 export function CaseCard({ kase }: { kase: Case }) {
   const nav = getNavigator(kase.navigatorSlug);
   const progress = caseProgress(kase);
-  const nextDeadline = kase.deadlines
-    .filter((d) => !d.verified)
-    .sort((a, b) => a.date.localeCompare(b.date))[0];
+  const nextDeadline = headlineDeadline(kase.deadlines);
 
   return (
     <Link href={`/cases/${kase.id}`} className="group block h-full">
@@ -50,7 +48,8 @@ export function CaseCard({ kase }: { kase: Case }) {
             {nextDeadline && (
               <p className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
                 <CalendarClock className="h-3.5 w-3.5" />
-                {nextDeadline.title} · {relativeDeadline(nextDeadline.date)}
+                {nextDeadline.title} ·{" "}
+                {nextDeadline.date ? relativeDay(nextDeadline.date) : "needs verification"}
               </p>
             )}
           </div>

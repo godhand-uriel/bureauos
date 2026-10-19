@@ -1,5 +1,4 @@
 import type { NavigatorDef, PlanResult } from "@/lib/types";
-import { daysUntil } from "@/lib/utils";
 
 const smallBusiness: NavigatorDef = {
   slug: "small-business",
@@ -10,6 +9,7 @@ const smallBusiness: NavigatorDef = {
     "A compliance command center for small business owners: formation checklist, licenses and permits, tax registrations, annual filing reminders, and a simple task board so nothing lapses.",
   icon: "store",
   accent: "160 84% 39%",
+  launchStatus: "preview",
   problems: [
     "Not sure which licenses and permits apply",
     "Missed or upcoming annual report filings",
@@ -133,31 +133,10 @@ const smallBusiness: NavigatorDef = {
         { id: "owner", label: "Who is responsible", placeholder: "e.g. Jordan (owner), CPA files it" },
         { id: "details", label: "Details / steps", multiline: true, placeholder: "Filing portal, fee amount, documents needed…" },
       ],
-      render: (v, ctx) => `INTERNAL COMPLIANCE MEMO
-
-Business: ${v.business_name || "[BUSINESS NAME]"}
-Date: ${ctx.todayLong}
-Prepared by: ${ctx.senderName}
-
-RE: ${v.obligation || "[OBLIGATION / FILING NAME]"}
-
-Due date: ${v.due_date || "[DUE DATE — VERIFY WITH THE STATE]"}
-Responsible: ${v.owner || "[RESPONSIBLE PERSON]"}
-
-Details and plan:
-${v.details || "[STEPS, PORTAL LINKS, FEES, AND DOCUMENTS NEEDED]"}
-
-Action items:
-1. Confirm the exact due date and fee with the filing authority.
-2. Gather required information before the filing window opens.
-3. File, pay, and save the confirmation to the compliance folder.
-4. Add next year's date to the compliance calendar.
-
-This memo documents our awareness of the obligation as of the date above.`,
     },
   ],
   disclaimer:
-    "BureauOS helps you organize compliance obligations and deadlines. It is not legal, tax, or accounting advice. Requirements vary by state, county, city, and industry — verify each obligation with the relevant agency or a professional.",
+    "Building202 helps you organize compliance obligations and deadlines. It is not legal, tax, or accounting advice. Requirements vary by state, county, city, and industry — verify each obligation with the relevant agency or a professional.",
   buildPlan: (a): PlanResult => {
     const stage = a.business_stage as string;
     const entity = (a.entity_type as string) || "unsure";
@@ -204,7 +183,7 @@ This memo documents our awareness of the obligation as of the date above.`,
         { label: "Administrative dissolution risk", detail: "Prolonged delinquency can lead the state to dissolve the entity, exposing you to personal liability for business obligations.", severity: "critical" },
         { label: "Accruing penalties", detail: "Late filing fees and interest compound. Filing sooner is nearly always cheaper than a perfect filing later.", severity: "warning" },
       );
-      plan.deadlines.push({ title: "File overdue state report", inDays: 14, note: "Self-imposed target — verify actual penalty schedule with the state." });
+      plan.deadlines.push({ kind: "suggested", title: "File overdue state report", inDays: 14, note: "Self-imposed target — verify actual penalty schedule with the state." });
     } else {
       plan.priority = "low";
       plan.situationSummary = `${name} is formed and operating in ${state}. The job now is defense: a compliance calendar that catches every recurring obligation before it's late, and a document file that proves compliance if anyone asks.`;
@@ -235,11 +214,11 @@ This memo documents our awareness of the obligation as of the date above.`,
     }
 
     if (typeof a.annual_report_due === "string" && a.annual_report_due) {
-      plan.deadlines.push({ title: "Annual report / franchise tax due", inDays: daysUntil(a.annual_report_due), note: `You entered ${a.annual_report_due}. Verify with the ${state} Secretary of State.` });
+      plan.deadlines.push({ kind: "self_reported", title: "Annual report / franchise tax due", date: a.annual_report_due, note: `The date you entered. Verify with the ${state} Secretary of State.` });
     } else {
       plan.extraTasks.push({ title: "Find your annual report due date", description: `Look up ${name} on the ${state} registry — the due date is usually tied to your formation anniversary or a fixed statewide date.`, category: "Verify", dueInDays: 5 });
     }
-    plan.deadlines.push({ title: "Compliance calendar review", inDays: 30, note: "Recurring monthly check: anything due in the next 60 days?" });
+    plan.deadlines.push({ kind: "suggested", title: "Compliance calendar review", inDays: 30, note: "Recurring monthly check: anything due in the next 60 days?" });
     return plan;
   },
 };

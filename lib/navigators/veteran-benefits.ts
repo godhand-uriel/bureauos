@@ -1,5 +1,4 @@
 import type { NavigatorDef, PlanResult } from "@/lib/types";
-import { daysUntil } from "@/lib/utils";
 
 const veteranBenefits: NavigatorDef = {
   slug: "veteran-benefits",
@@ -10,6 +9,7 @@ const veteranBenefits: NavigatorDef = {
     "Organize your VA benefits journey: intake for the benefits you're pursuing, a claim preparation checklist, evidence tracker, appointment and document tracker, and a benefit category organizer.",
   icon: "medal",
   accent: "262 83% 66%",
+  launchStatus: "preview",
   problems: [
     "Not sure which VA benefits apply",
     "Disability claim evidence feels overwhelming",
@@ -145,38 +145,10 @@ const veteranBenefits: NavigatorDef = {
         { id: "records_wanted", label: "Records requested", multiline: true, placeholder: "All treatment notes, imaging, and test results related to lower back condition" },
         { id: "return_address", label: "Where to send records", multiline: true },
       ],
-      render: (v, ctx) => `${ctx.todayLong}
-
-${v.provider_name || "[PROVIDER / FACILITY NAME]"}
-${v.provider_address || "[PROVIDER ADDRESS]"}
-
-Re: Request for Medical Records
-Patient: ${ctx.senderName}
-Date of Birth: ${v.patient_dob || "[DATE OF BIRTH]"}
-
-To Whom It May Concern:
-
-I am requesting copies of my medical records to support a claim for veterans' benefits with the Department of Veterans Affairs.
-
-Please provide records for the following treatment period: ${v.treatment_period || "[TREATMENT PERIOD]"}
-
-Records requested:
-${v.records_wanted || "[DESCRIBE THE RECORDS — TREATMENT NOTES, IMAGING, TEST RESULTS, DIAGNOSES]"}
-
-Please send the records to:
-${v.return_address || "[YOUR MAILING ADDRESS OR SECURE DELIVERY METHOD]"}
-
-If a signed authorization form is required, please send it to me and I will return it promptly. If any fee applies, please notify me of the amount before processing. Note that some states limit or waive fees for records supporting benefits claims.
-
-Thank you for your assistance.
-
-Sincerely,
-
-${ctx.senderName}`,
     },
   ],
   disclaimer:
-    "BureauOS helps you organize records, appointments, and deadlines for your VA benefits journey. It is not legal advice and is not affiliated with the VA. For claim strategy, work with an accredited VSO, agent, or attorney — VSO help is free.",
+    "Building202 helps you organize records, appointments, and deadlines for your VA benefits journey. It is not legal advice and is not affiliated with the VA. For claim strategy, work with an accredited VSO, agent, or attorney — VSO help is free.",
   buildPlan: (a): PlanResult => {
     const categories = (a.benefit_categories as string[]) || [];
     const stage = (a.claim_stage as string) || "exploring";
@@ -224,7 +196,7 @@ ${ctx.senderName}`,
         { title: "Complete the evidence file per condition", detail: "For each condition: current diagnosis, in-service event or exposure, and a link between them. Buddy statements can fill gaps in service records." },
         { title: hasVso ? "File through your VSO" : "Engage a VSO before filing", detail: hasVso ? "Review the complete package with your VSO and file. Keep copies of every page submitted." : "An accredited VSO will strengthen and file the claim free of charge — worth the short wait to engage one." },
       ];
-      plan.deadlines.push({ title: "Intent to File — 1-year completion window", inDays: 365, note: "After submitting an ITF, the complete claim must follow within one year to keep the effective date." });
+      plan.deadlines.push({ kind: "official_unavailable", key: "itf-window", title: "Intent to File — completion window", note: "Not calculated: the window runs from the date VA receives your Intent to File, which Building202 does not have. Use the date on your VA confirmation and verify the window with VA or your VSO." });
       if (!inTreatment) {
         plan.riskFlags.push({ label: "No current treatment", detail: "Claims need current diagnoses. If you're not in treatment for a claimed condition, get seen — VA health care or a private provider — before or right after filing.", severity: "warning" });
         plan.extraTasks.push({ title: "Get current medical documentation", description: "Schedule an exam for each claimed condition so there's a recent diagnosis on record.", category: "Evidence", dueInDays: 21 });
@@ -247,9 +219,9 @@ ${ctx.senderName}`,
         { title: "Pick the review lane with your VSO", detail: "New evidence available → Supplemental Claim. VA made an error on existing evidence → Higher-Level Review. Complex disputes → Board Appeal." },
       ];
       if (typeof a.decision_date === "string" && a.decision_date) {
-        plan.deadlines.push({ title: "Decision review deadline (1 year from decision)", inDays: daysUntil(a.decision_date) + 365, note: `Decision dated ${a.decision_date}. The review request is generally due one year from that date — verify on the letter.` });
+        plan.deadlines.push({ kind: "official_unavailable", key: "decision-review", title: "Decision review deadline", note: `Not calculated: Building202 has no verified rule for this navigator yet. You entered a decision date of ${a.decision_date}; the review deadline is stated on the decision letter — verify it there or with your VSO.` });
       } else {
-        plan.deadlines.push({ title: "Find the decision letter date", inDays: 5, note: "The one-year review clock runs from the date on the decision letter." });
+        plan.deadlines.push({ kind: "official_unavailable", key: "decision-review", title: "Decision review deadline", note: "Not established: find the date on your decision letter. The review deadline is stated there." });
       }
       plan.riskFlags.push({ label: "Review window", detail: "Missing the one-year window doesn't end everything (Supplemental Claims can reopen later) but usually costs the earlier effective date — real money.", severity: "critical" });
       plan.extraDocuments.push({ name: "VA decision letter (all pages)", required: true }, { name: "C-file (claims file) request", required: false, description: "Request via VA.gov or FOIA — shows exactly what the rater saw." });

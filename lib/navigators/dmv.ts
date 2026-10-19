@@ -1,5 +1,4 @@
 import type { NavigatorDef, PlanResult } from "@/lib/types";
-import { daysUntil } from "@/lib/utils";
 
 const dmv: NavigatorDef = {
   slug: "dmv",
@@ -10,6 +9,7 @@ const dmv: NavigatorDef = {
     "Work through license issues, registration problems, suspensions, and lost documents with a clear reinstatement checklist and a records request letter you can send today.",
   icon: "car",
   accent: "217 91% 60%",
+  launchStatus: "preview",
   problems: [
     "Suspended or revoked license",
     "Expired or failed vehicle registration",
@@ -140,38 +140,10 @@ const dmv: NavigatorDef = {
         { id: "issue_summary", label: "Brief description of the issue", multiline: true, fromAnswer: "situation_notes" },
         { id: "return_address", label: "Your mailing address", multiline: true },
       ],
-      render: (v, ctx) => `${ctx.todayLong}
-
-To: ${v.dmv_office || "[DMV OFFICE NAME AND ADDRESS]"}
-
-Re: Request for Driving Record and Account Status
-Driver License Number: ${v.license_number || "[LICENSE NUMBER]"}
-Date of Birth: ${v.dob || "[DATE OF BIRTH]"}
-
-To Whom It May Concern:
-
-I am writing to request a complete copy of my driving record, along with a written summary of any holds, suspensions, outstanding fees, or requirements currently associated with my license or vehicle registration.
-
-${v.issue_summary ? `For context: ${v.issue_summary}` : "[BRIEFLY DESCRIBE YOUR ISSUE]"}
-
-Specifically, I am requesting:
-1. My complete driving record.
-2. An itemized list of any outstanding fees or fines.
-3. The specific steps and documents required to resolve any hold or suspension on my record.
-4. Any deadlines that apply to my situation.
-
-Please send the requested records to the address below. If any fee is required to process this request, please let me know the amount and accepted payment methods.
-
-Thank you for your assistance.
-
-Sincerely,
-
-${ctx.senderName}
-${v.return_address || "[YOUR MAILING ADDRESS]"}`,
     },
   ],
   disclaimer:
-    "BureauOS helps you organize your DMV situation and prepare next steps. It is not legal advice, and DMV rules vary by state — always verify requirements and deadlines directly with your state DMV.",
+    "Building202 helps you organize your DMV situation and prepare next steps. It is not legal advice, and DMV rules vary by state — always verify requirements and deadlines directly with your state DMV.",
   buildPlan: (a): PlanResult => {
     const issue = a.issue_type as string;
     const suspReason = a.suspension_reason as string | undefined;
@@ -257,12 +229,12 @@ ${v.return_address || "[YOUR MAILING ADDRESS]"}`,
       plan.extraTasks.push({ title: "Confirm total owed and payment options", description: `You estimated ${amt}. Get the official itemized total — payment plans are often available for larger amounts.`, category: "Fees", dueInDays: 5 });
     }
     if (hasNotice && typeof a.notice_deadline === "string" && a.notice_deadline) {
-      plan.deadlines.push({ title: "Deadline printed on DMV notice", inDays: daysUntil(a.notice_deadline), note: `You entered ${a.notice_deadline}. Verify this date on the notice and respond before it.` });
+      plan.deadlines.push({ kind: "self_reported", title: "Deadline printed on DMV notice", date: a.notice_deadline, note: "The date you entered from your notice. Verify it on the notice and respond before it." });
       plan.riskFlags.push({ label: "Notice deadline", detail: "Missing a printed DMV deadline can escalate fees or trigger suspension. Treat the notice date as hard until confirmed otherwise.", severity: "warning" });
     } else if (!hasNotice) {
       plan.extraTasks.push({ title: "Check for missed mail from the DMV", description: "Update your address with the DMV and check whether notices went to an old address.", category: "Prepare", dueInDays: 5 });
     }
-    plan.deadlines.push({ title: "Verify reinstatement/renewal deadline with DMV", inDays: 7, note: "Call or check online — confirm any real deadline that applies to your case." });
+    plan.deadlines.push({ kind: "suggested", title: "Verify reinstatement/renewal deadline with DMV", inDays: 7, note: "Call or check online — confirm any real deadline that applies to your case." });
     plan.timelineEntries.push({ title: "Action plan generated", detail: "DMV Navigator produced an initial plan from your intake answers." });
     return plan;
   },

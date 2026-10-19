@@ -1,20 +1,21 @@
-// BureauOS — database schema (Phase 1: SQLite, local development).
+// Building202 — database schema. THIS FILE IS THE SOURCE OF TRUTH.
 //
-// This is the ACTIVE schema backing the app's API routes via Prisma.
+// Two engines, one data model:
+//   - SQLite      local development and the default test run (this file,
+//                 migrations in prisma/migrations)
+//   - PostgreSQL  production (prisma/postgres/schema.prisma — GENERATED from
+//                 this file by `npm run db:sync`, migrations in
+//                 prisma/postgres/migrations). Never edit that copy by hand.
+// scripts/prisma-env.mjs picks the schema from DATABASE_URL, and
+// `npm run db:migration:new -- <name>` writes a migration for BOTH engines.
 //
-// SQLite adaptations from the original Postgres-shaped draft (see
-// docs/backend_migration_plan.md for the full delta):
-//   - Prisma enums are not supported on SQLite → status/role/tier columns are
-//     String and hold the SAME lowercase values the domain types use
-//     (e.g. "in_progress", "assisted_review"). Zod validates every value at
-//     the API boundary (lib/schemas.ts).
-//   - Json columns → String columns holding serialized JSON (answers, plan
-//     actions/risk flags). Serializers in lib/server/serializers.ts parse.
-//   - User.passwordHash backs the Auth.js credentials provider (scrypt).
-//     Sessions are stateless Auth.js JWTs — no session table needed.
-//
-// Postgres migration: switch provider to "postgresql", reintroduce enums and
-// Json types, drop Session/passwordHash in favor of the auth provider.
+// To keep the model identical on both engines it uses only types they share:
+//   - enum-like columns are String and hold the lowercase domain values
+//     (e.g. "in_progress"). Zod validates every value at the API boundary
+//     (lib/schemas.ts).
+//   - JSON-shaped data is a String column holding serialized JSON, parsed in
+//     lib/server/serializers.ts.
+//   - Sessions are stateless Auth.js JWTs — there is no session table.
 
 datasource db {
   provider = "sqlite"
@@ -29,21 +30,85 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
-  // Demo-grade credential storage (scrypt). Replaced by a real auth provider.
+  // Scrypt hash backing the Auth.js credentials provider.
   passwordHash String   @default("")
   role         String   @default("customer") // "customer" | "admin"
+  // Staff MFA (RFC 6238 TOTP). Required for admin sign-in in production.
+  mfaSecret    String   @default("") // base32; set during enrollment
+  mfaEnabled   Boolean  @default(false)
+  // Bumped on password change/reset; sessions issued for an older value are
+  // rejected (lib/server/auth.ts), so a stolen session dies with the password.
+  sessionVersion Int    @default(0)
   usState      String   @default("")
   phone        String   @default("")
   createdAt    DateTime @default(now())
 
   notificationPrefs NotificationPreference?
   cases             Case[]
-  subscriptions     Subscription[]
   tickets           SupportTicket[]
   reviews           ReviewRequest[]
   files             UploadedFile[]
   acceptances       DisclaimerAcceptance[]
   notifications     NotificationEvent[]
+  passwordResets    PasswordResetToken[]
+  purchases         Purchase[]
+  entitlements      Entitlement[]
+}
+
+// A one-time purchase attempt, created server-side before redirecting to
+// Stripe Checkout. Status moves ONLY in response to verified Stripe webhook
+// events (lib/server/payments.ts) — never from a browser redirect.
+// Financial record: survives account/case deletion with the links nulled.
+model Purchase {
+  id                      String        @id @default(cuid())
+  user                    User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId                  String?
+  case                    Case?         @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  caseId                  String?
+  product                 String // product key, e.g. "case_pass" (lib/server/commerce.ts)
+  amountCents             Int
+  currency                String        @default("usd")
+  status                  String        @default("pending") // PurchaseStatus values
+  livemode                Boolean       @default(false)
+  stripeCheckoutSessionId String?       @unique
+  stripePaymentIntentId   String?       @unique
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  entitlements            Entitlement[]
+
+  @@index([userId])
+  @@index([caseId])
+}
+
+// What a customer is entitled to on one case. Rows are written only by the
+// payment fulfilment path or an audited staff grant — there is no customer-
+// callable API that creates or activates one.
+model Entitlement {
+  id           String    @id @default(cuid())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  case         Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId       String
+  product      String // "case_pass"
+  status       String    @default("active") // "active" | "revoked"
+  source       String // "stripe" | "staff_grant" | "dev_simulation"
+  purchase     Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  purchaseId   String?
+  grantedAt    DateTime  @default(now())
+  revokedAt    DateTime?
+  revokeReason String?
+
+  @@unique([caseId, product])
+  @@index([userId])
+}
+
+// Processed Stripe webhook events — the idempotency ledger. An event id is
+// inserted in the same transaction that applies its effects.
+model StripeEvent {
+  id          String   @id // Stripe event id (evt_…)
+  type        String
+  livemode    Boolean
+  processedAt DateTime @default(now())
 }
 
 model NotificationPreference {
@@ -85,6 +150,8 @@ model Case {
   adminNotes AdminNote[]
   reviews    ReviewRequest[]
   tickets    SupportTicket[]
+  purchases    Purchase[]
+  entitlements Entitlement[]
 
   @@index([userId])
 }
@@ -138,14 +205,21 @@ model DocumentRequirement {
   @@index([caseId])
 }
 
+// kind: "official" | "self_reported" | "suggested" (lib/types.ts → DeadlineKind).
+// An official deadline has a date ONLY when a source-checked rule was applied
+// to the real triggering event; otherwise date is NULL (NEEDS VERIFICATION).
 model Deadline {
-  id       String   @id @default(cuid())
-  case     Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  caseId   String
-  title    String
-  date     DateTime
-  note     String?
-  verified Boolean  @default(false)
+  id          String    @id @default(cuid())
+  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId      String
+  key         String    @default("") // stable identity across plan regenerations
+  title       String
+  kind        String    @default("suggested")
+  date        DateTime? // calendar date stored at 12:00 UTC; NULL = not established
+  note        String?
+  verified    Boolean   @default(false)
+  sourceJson  String? // serialized DeadlineSource (rule citation, URL, check date)
+  triggerJson String? // serialized DeadlineTrigger (what the date was counted from)
 
   @@index([caseId])
 }
@@ -175,6 +249,10 @@ model TimelineEvent {
   @@index([caseId])
 }
 
+// FROZEN: file uploads are disabled for launch (POST /api/files returns 410).
+// Building202 never stored file bytes — rows here are name/type/size metadata
+// recorded by earlier versions. The table is kept so those rows remain
+// exportable and deletable; nothing writes new ones.
 model UploadedFile {
   id         String   @id @default(cuid())
   case       Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
@@ -183,39 +261,14 @@ model UploadedFile {
   userId     String
   name       String
   fileType   String
-  sizeLabel  String // human-readable; bytes stay on the user's device in Phase 1
+  sizeLabel  String // human-readable
   category   String // FileCategory values
-  storageKey String   @default("") // reserved for S3/Supabase Storage object keys
+  storageKey String   @default("") // reserved for object-storage keys
   status     String   @default("pending_review") // FileStatus values
   notes      String   @default("")
   uploadedAt DateTime @default(now())
 
   @@index([caseId])
-}
-
-model Subscription {
-  id               String    @id @default(cuid())
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId           String    @unique
-  tier             String    @default("self_service") // ServiceTierId values
-  status           String    @default("active") // "active" | "canceled"
-  stripeCustomerId String?
-  stripeSubId      String?
-  startedAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  payments         Payment[]
-}
-
-// Simulated billing history entries (Stripe-shaped; no real charges).
-model Payment {
-  id              String       @id @default(cuid())
-  subscription    Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  subscriptionId  String
-  stripePaymentId String?
-  label           String
-  amountLabel     String
-  kind            String // "mock_charge" | "mock_refund" | "plan_change"
-  createdAt       DateTime     @default(now())
 }
 
 // Polymorphic staff note: exactly one of caseId / ticketId / reviewId is set.
@@ -231,6 +284,10 @@ model AdminNote {
   authorName String
   body       String
   createdAt  DateTime       @default(now())
+
+  @@index([caseId])
+  @@index([ticketId])
+  @@index([reviewId])
 }
 
 model SupportTicket {
@@ -258,6 +315,8 @@ model TicketMessage {
   authorName String
   body       String
   createdAt  DateTime      @default(now())
+
+  @@index([ticketId])
 }
 
 model ReviewRequest {
@@ -286,7 +345,7 @@ model DisclaimerAcceptance {
   acceptedDisclaimer Boolean
   acceptedAt         DateTime @default(now())
 
-  @@index([userId, version])
+  @@index([userId, caseId, version])
 }
 
 // Append-only record of staff actions (status changes, assignments, notes,
@@ -308,16 +367,45 @@ model AuditLog {
   @@index([caseId])
 }
 
+// Outbound notifications (email only — SMS is not offered). Written as
+// "queued" and delivered by lib/server/notify.ts, inline and then by the
+// scheduled runner (/api/internal/notifications) for retries.
+//   status: queued | sent | failed | skipped (no provider configured in
+//           production — nothing was sent) | mock_sent (development outbox)
 model NotificationEvent {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String    @id @default(cuid())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  type              String // NotificationEventType values
+  channel           String    @default("email")
+  subject           String
+  body              String
+  status            String    @default("queued")
+  attempts          Int       @default(0)
+  nextAttemptAt     DateTime?
+  lastError         String?
+  providerMessageId String?
+  sentAt            DateTime?
+  // Body holds a secret (e.g. a password-reset link): replaced once delivery settles.
+  sensitive         Boolean   @default(false)
+  // Prevents the same reminder being queued twice (e.g. "deadline:<id>:<date>:3").
+  dedupeKey         String?   @unique
+  createdAt         DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([status, nextAttemptAt])
+}
+
+// One-time password-reset links. Only a SHA-256 hash of the token is stored;
+// the token itself exists only in the email. Single use, 30-minute lifetime.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
-  type      String // NotificationEventType values
-  channel   String // "email" | "sms"
-  subject   String
-  body      String
-  status    String   @default("mock_sent") // queued | mock_sent (no real delivery in Phase 1)
-  createdAt DateTime @default(now())
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }

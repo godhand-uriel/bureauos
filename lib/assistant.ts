@@ -2,13 +2,11 @@ import { getNavigator } from "@/lib/navigators";
 import type { NavigatorDef } from "@/lib/types";
 
 /**
- * BureauOS assistant — rule-based provider.
+ * Building202 assistant — a deterministic keyword router, not an AI model.
  *
- * This module implements `AssistantProvider` with deterministic keyword
- * routing so the assistant works with zero API keys. To upgrade to a real
- * model (Anthropic, OpenAI, OpenRouter, local), implement the same interface
- * behind an API route and swap the provider where the assistant page calls
- * `ruleBasedProvider` (see README → AI assistant).
+ * It runs entirely in the browser: nothing typed into it is sent to a server
+ * or a third party. The `AssistantProvider` interface is the seam a
+ * model-backed provider would implement; none is connected.
  */
 
 export interface AssistantMessage {
@@ -55,7 +53,7 @@ export function matchNavigator(text: string): { nav: NavigatorDef; score: number
 }
 
 export const GREETING: { text: string; actions: AssistantAction[] } = {
-  text: "Hi — I'm the BureauOS assistant. Tell me what's going on in your own words, and I'll point you to the right navigator, explain what information you'll need, and set you up to start a case.\n\nA sentence or two is plenty. What are you dealing with?",
+  text: "Hi — I'm the Building202 assistant. Tell me what's going on in your own words, and I'll point you to the right navigator, explain what information you'll need, and set you up to start a case.\n\nA sentence or two is plenty. What are you dealing with?",
   actions: [
     { label: "My license got suspended", kind: "say", value: "My license got suspended" },
     { label: "I just lost my job", kind: "say", value: "I just lost my job" },
@@ -97,7 +95,7 @@ export const ruleBasedProvider: AssistantProvider = {
 
     if (/how does intake|intake work|what happens next/i.test(text) && matched) {
       return {
-        text: `Intake is ${matched.nav.questions.length} plain-language questions — things like what happened, which state you're in, and what documents you already have. Your progress saves after every question.\n\nWhen you finish, BureauOS generates a personalized action plan: a summary of your situation, your next three moves, a document checklist, deadlines to verify, and any risk flags. From there the case command center tracks everything.`,
+        text: `Intake is ${matched.nav.questions.length} plain-language questions — things like what happened, which state you're in, and what documents you already have. Your progress saves after every question.\n\nWhen you finish, Building202 generates an action plan from your answers: a summary of your situation, next steps, a document checklist, deadlines to track or verify, and any risk flags.`,
         actions: [
           { label: `Start a ${matched.nav.shortName} case`, kind: "navigate", value: `/cases/new?navigator=${matched.nav.slug}` },
         ],
@@ -107,8 +105,12 @@ export const ruleBasedProvider: AssistantProvider = {
     const match = matchNavigator(text) ?? matched;
     if (match) {
       const { nav } = match;
+      const scope =
+        nav.launchStatus === "live"
+          ? "Deadline calculations in this navigator are currently available for Florida; elsewhere, state deadlines are marked as needing verification."
+          : "This navigator is in preview: general organizing tools only, with no verified deadline rules — every date is yours to confirm.";
       return {
-        text: `Here's what I'm hearing: "${summarize(text)}"\n\nThat fits the **${nav.name}** — ${nav.tagline.toLowerCase()}\n\nIt handles things like:\n${nav.problems.slice(0, 3).map((p) => `• ${p}`).join("\n")}\n\nNext steps: start a case, answer the guided intake (~5 minutes, saves as you go), and you'll get a personalized action plan with your next three moves, documents to gather, and deadlines to watch.\n\nOne honest note: I help you organize and prepare — I don't give legal advice.`,
+        text: `Here's what I'm hearing: "${summarize(text)}"\n\nThat fits the **${nav.name}** — ${nav.tagline.toLowerCase()}\n\nIt handles things like:\n${nav.problems.slice(0, 3).map((p) => `• ${p}`).join("\n")}\n\nNext steps: start a case, answer the guided intake (~5 minutes, saves as you go), and you'll get an action plan with next steps, documents to gather, and deadlines to track.\n\n${scope}\n\nOne honest note: I help you organize and prepare — I don't give legal advice.`,
         actions: [
           { label: `Start a ${nav.shortName} case`, kind: "navigate", value: `/cases/new?navigator=${nav.slug}` },
           { label: "What documents will I need?", kind: "say", value: "What documents do I need?" },

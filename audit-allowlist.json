@@ -1,0 +1,40 @@
+{
+  "$comment": "Reviewed npm advisories in the PRODUCTION dependency tree that CI tolerates until `expires`. Each needs a reason it is not exploitable in Building202. scripts/audit-gate.mjs fails CI on any high/critical advisory not listed here, and on any entry past its expiry. Remove entries as soon as the upgrade lands.",
+  "advisories": [
+    {
+      "id": "GHSA-ggr8-5vv4-36mx",
+      "package": "deepmerge-ts (via prisma CLI / @prisma/config)",
+      "reason": "Stack exhaustion when merging a recursive object graph. Only the Prisma CLI's own configuration loader merges objects with it, at generate/migrate time, on config Building202 controls. No user input reaches it and it is not in the request path. Fixed upstream only in Prisma 7 (major upgrade).",
+      "reviewed": "2026-10-18",
+      "expires": "2027-01-31"
+    },
+    {
+      "id": "GHSA-6g55-p6wh-862q",
+      "package": "postcss (bundled in next)",
+      "reason": "Arbitrary file read via an attacker-controlled sourceMappingURL in CSS. PostCSS only processes Building202's own stylesheets at build time; the app never accepts or processes CSS from users. Fixed upstream only in Next 16 (major upgrade).",
+      "reviewed": "2026-10-18",
+      "expires": "2027-01-31"
+    },
+    {
+      "id": "GHSA-r28c-9q8g-f849",
+      "package": "postcss (bundled in next)",
+      "reason": "Path traversal in source-map auto-loading — same precondition as GHSA-6g55-p6wh-862q: attacker-controlled CSS, which Building202 never processes.",
+      "reviewed": "2026-10-18",
+      "expires": "2027-01-31"
+    },
+    {
+      "id": "GHSA-fxqj-rqcc-2cmp",
+      "package": "postcss (bundled in next)",
+      "reason": "Incomplete fix of GHSA-6g55-p6wh-862q; same precondition (attacker-controlled CSS). Moderate.",
+      "reviewed": "2026-10-18",
+      "expires": "2027-01-31"
+    },
+    {
+      "id": "GHSA-qx2v-qp2m-jg93",
+      "package": "postcss (bundled in next)",
+      "reason": "XSS through unescaped </style> in PostCSS's stringify output — only relevant when stringifying untrusted CSS into a page. Building202 stringifies only its own build-time CSS. Moderate.",
+      "reviewed": "2026-10-18",
+      "expires": "2027-01-31"
+    }
+  ]
+}

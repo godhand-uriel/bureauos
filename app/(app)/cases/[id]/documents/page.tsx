@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Callout } from "@/components/callout";
 import { DocumentChecklist } from "@/components/document-checklist";
 import { EmptyState } from "@/components/empty-state";
-import { FileUploadPanel } from "@/components/file-upload-panel";
 import { useBureauStore, useCase, useHydrated } from "@/lib/store";
 
 export default function DocumentsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -16,7 +15,6 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
   const hydrated = useHydrated();
   const kase = useCase(id);
   const setDocumentStatus = useBureauStore((s) => s.setDocumentStatus);
-  const files = useBureauStore((s) => s.files).filter((f) => f.caseId === id);
 
   if (!hydrated || !kase) return null;
 
@@ -61,12 +59,11 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
         </CardContent>
       </Card>
 
-      <FileUploadPanel caseId={kase.id} files={files} />
-
-      <Callout variant="info" title="Working with originals">
-        Keep original documents safe and work from copies. When you obtain a document, note where
-        it&apos;s stored — physical folder, phone photos, or cloud drive — so you can produce it fast
-        when an agency asks.
+      <Callout variant="info" title="Building202 doesn't store your documents">
+        This checklist tracks which documents you have — it doesn&apos;t collect them, and there is
+        nothing to upload. Keep originals safe, work from copies, and note where each one is stored
+        (physical folder, phone photos, or cloud drive) so you can produce it fast when an agency
+        asks.
       </Callout>
     </div>
   );

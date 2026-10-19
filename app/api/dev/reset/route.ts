@@ -4,16 +4,19 @@ import { badRequest, getSessionUser, unauthorized } from "@/lib/server/auth";
 import { writeAudit } from "@/lib/server/audit";
 import { seedDatabase, wipeDatabase } from "@/lib/server/seed-db";
 import { devResetInputSchema } from "@/lib/schemas";
+import { isProduction } from "@/lib/server/credentials";
 
 /**
- * Demo-workflow management: wipe all local data and optionally reseed.
- * Refused in production builds. After a reset the caller's account no longer
- * exists — the client signs back in through Auth.js (demo credentials on
- * reseed) rather than this route minting a session.
+ * Development/demo-only: wipe all local data and optionally reseed.
+ *
+ * UNCONDITIONALLY refused in production builds — there is deliberately no
+ * environment-variable escape hatch, so no configuration mistake can expose
+ * a database wipe to a customer deployment. Destructive production
+ * operations belong to operators with database access, not to an API route.
  */
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV === "production" && process.env.BUREAUOS_ALLOW_RESET !== "true") {
-    return NextResponse.json({ error: "Reset is disabled in production." }, { status: 403 });
+  if (isProduction()) {
+    return NextResponse.json({ error: "Not available." }, { status: 404 });
   }
   const user = await getSessionUser();
   if (!user) return unauthorized();

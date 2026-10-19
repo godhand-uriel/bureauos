@@ -3,6 +3,7 @@ import { prisma } from "@/lib/server/db";
 import { badRequest, forbidden, getSessionUser, notFound, unauthorized } from "@/lib/server/auth";
 import { caseInclude, caseToDomain, reviewInclude, reviewToDomain } from "@/lib/server/serializers";
 import { queueNotification } from "@/lib/server/notify";
+import { humanReviewEnabled } from "@/lib/server/commerce";
 import { createReviewInputSchema } from "@/lib/schemas";
 import { tierIncludesReview } from "@/lib/packages";
 import { DISCLAIMER_VERSION } from "@/lib/constants";
@@ -16,6 +17,13 @@ import type { ServiceTierId } from "@/lib/types";
 export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) return unauthorized();
+
+  // Human review is a staffed service. Unless operations has switched it on,
+  // no request can be created — the queue must never fill with requests that
+  // nobody is contracted to answer.
+  if (!humanReviewEnabled()) {
+    return NextResponse.json({ error: "Professional review is not currently offered." }, { status: 409 });
+  }
 
   const parsed = createReviewInputSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return badRequest(parsed.error.flatten());

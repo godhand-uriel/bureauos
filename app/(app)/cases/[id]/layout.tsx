@@ -12,7 +12,7 @@ import { NavigatorIcon } from "@/components/navigator-icon";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
 import { getNavigator } from "@/lib/navigators";
 import { caseProgress } from "@/lib/plan-engine";
-import { useBureauStore, useCase, useHydrated } from "@/lib/store";
+import { useBureauStore, useCase, useCasePass, useHydrated } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type { CaseStatus } from "@/lib/types";
 
@@ -49,6 +49,9 @@ export default function CaseLayout({
   const kase = useCase(id);
   const setCaseStatus = useBureauStore((s) => s.setCaseStatus);
   const deleteCase = useBureauStore((s) => s.deleteCase);
+  const humanReview = useBureauStore((s) => s.capabilities?.humanReview ?? false);
+  const hasReview = useBureauStore((s) => s.reviews.some((r) => r.caseId === id));
+  const hasPass = useCasePass(id);
 
   if (!hydrated) {
     return (
@@ -64,7 +67,7 @@ export default function CaseLayout({
       <EmptyState
         icon={FileQuestion}
         title="Case not found"
-        description="This case doesn't exist on this device. It may have been deleted, or was created in a different browser."
+        description="This case doesn't exist or isn't part of your account. It may have been deleted."
         action={
           <Link href="/dashboard">
             <Button>Back to dashboard</Button>
@@ -122,7 +125,10 @@ export default function CaseLayout({
               size="icon"
               aria-label="Delete case"
               onClick={() => {
-                if (window.confirm(`Delete "${kase.title}"? This cannot be undone.`)) {
+                const warning = hasPass
+                  ? `Delete "${kase.title}"? This cannot be undone. This case has a Case Pass — it is deleted with the case, can't be moved to another case, and deleting does not refund it.`
+                  : `Delete "${kase.title}"? This cannot be undone.`;
+                if (window.confirm(warning)) {
                   deleteCase(kase.id);
                   router.push("/dashboard");
                 }
@@ -140,7 +146,7 @@ export default function CaseLayout({
 
         {/* Tabs */}
         <nav className="-mb-px flex gap-1 overflow-x-auto border-b border-border" aria-label="Case sections">
-          {TABS.map((tab) => {
+          {TABS.filter((tab) => tab.segment !== "review" || humanReview || hasReview).map((tab) => {
             const href = tab.segment ? `/cases/${kase.id}/${tab.segment}` : `/cases/${kase.id}`;
             const active = pathname === href;
             return (
