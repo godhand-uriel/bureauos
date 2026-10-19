@@ -1,8 +1,8 @@
-# BureauOS
+# Building202
 
 **Bureaucracy is a system. Now you have one too.**
 
-BureauOS turns a life-admin problem into an organized case: guided intake, an action plan,
+Building202 (formerly BureauOS) turns a life-admin problem into an organized case: guided intake, an action plan,
 source-backed deadline tracking, checklists, letters, and a dated timeline.
 
 The **Job Separation Navigator** is the launch product. Its deadline calculations cover Florida
@@ -10,7 +10,7 @@ unemployment appeals, federal COBRA elections, and Marketplace enrollment. Five 
 (DMV, Small Business, Insurance Denial, Veteran Benefits, Tenant Rights) are available as
 **previews**: free organizing tools with no verified deadline rules and nothing for sale.
 
-> BureauOS is self-service software, not a law firm. It gives no legal advice, files nothing on
+> Building202 is self-service software, not a law firm. It gives no legal advice, files nothing on
 > anyone's behalf, and promises no outcome, and the product says so wherever it matters.
 > Acceptance of the terms is recorded, per case and per version, before plans or letters are
 > produced.
@@ -26,7 +26,7 @@ unemployment appeals, federal COBRA elections, and Marketplace enrollment. Five 
 Payment goes through Stripe-hosted Checkout. A verified Stripe webhook is the only way a Case Pass
 becomes active (a browser redirect never activates one). The letter text lives only on the server,
 and every render or save is entitlement-checked. Human-assisted review is **not offered**: it stays
-off unless `BUREAUOS_HUMAN_REVIEW_ENABLED=true`. There is no file upload: BureauOS never stored
+off unless `BUREAUOS_HUMAN_REVIEW_ENABLED=true`. There is no file upload: Building202 never stored
 file contents, and the old metadata-only panel was removed rather than left looking like an upload.
 
 ## Quick start (development)
@@ -40,7 +40,8 @@ npm run dev             # http://localhost:3000
 ```
 
 Development-only demo accounts (they are refused at sign-in in production, and demo login is
-removed from production builds):
+removed from production builds). Their `bureauos.app` addresses predate the rename and are kept
+on purpose: tests and existing development databases depend on them.
 
 | Role | Email | Password |
 |---|---|---|
@@ -129,6 +130,19 @@ tests/                     Integration tests against a real database (route hand
 Ownership, roles, entitlements, and prices are decided on the server for every request. The client
 store and UI only display what the server allows. `tests/letters.test.ts` keeps the boundary
 honest: it fails if a client component imports server code.
+
+## Brand, domain, and legacy names
+
+The public name is **Building202**; the intended production domain is **https://building202.com**.
+The domain is configuration, not code: set `BUREAUOS_APP_URL` (and `AUTH_URL`) to it once it is
+registered, pointed at the host, and serving TLS. Every absolute URL comes from that setting: Stripe
+return URLs, password-reset and email links, canonical tags, `robots.txt`, and `sitemap.xml`.
+
+Internal identifiers from before the rename keep their `bureauos` / `BUREAUOS_` spelling, because
+renaming them would break running configuration or in-flight data. That covers environment
+variables, Stripe and Resend idempotency-key prefixes, rate-limit keys, log tags, demo accounts, the
+npm package and repository name, and `useBureauStore`. The full list is in
+`docs/production_readiness.md` → "Brand and legacy identifiers".
 
 ## Configuration and launch status
 

@@ -19,7 +19,7 @@ const TYPE_PREFS: PrefItem[] = [
     label: "Deadline reminders",
     help: "7, 3 and 1 days before, and on the day, for deadlines that have a date. Never for ones still marked NEEDS VERIFICATION.",
   },
-  { key: "caseStatusAlerts", label: "Case updates", help: "When BureauOS staff change your case's status." },
+  { key: "caseStatusAlerts", label: "Case updates", help: "When Building202 staff change your case's status." },
   { key: "supportTicketUpdates", label: "Support replies", help: "Replies and status changes on your support tickets." },
 ];
 

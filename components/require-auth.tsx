@@ -94,7 +94,7 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
       <div className="mx-auto max-w-md pt-10 text-center">
         <h1 className="text-xl font-bold">Staff area</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          The admin console is only available to BureauOS staff accounts.
+          The admin console is only available to Building202 staff accounts.
         </p>
         <Link href="/login" className="mt-5 inline-block">
           <Button variant="outline">Go to login</Button>

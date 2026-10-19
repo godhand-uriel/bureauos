@@ -220,7 +220,7 @@ export default function IntakePage({ params }: { params: Promise<{ id: string }>
       {currentStep === 0 && (
         <Callout variant="info">
           Answer in plain language — there are no wrong answers, and you can update them later.
-          Leave a date blank if you don&apos;t have the paperwork in front of you: BureauOS never
+          Leave a date blank if you don&apos;t have the paperwork in front of you: Building202 never
           guesses a deadline, it marks it as needing verification until you add the real date.
         </Callout>
       )}

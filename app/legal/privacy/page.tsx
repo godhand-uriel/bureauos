@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalDraftNotice } from "@/components/legal-draft-notice";
 import { DISCLAIMER_VERSION } from "@/lib/constants";
 
-export const metadata: Metadata = { title: "Privacy Policy" };
+export const metadata: Metadata = { title: "Privacy Policy", alternates: { canonical: "/legal/privacy" } };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -30,7 +30,7 @@ export default function PrivacyPage() {
       />
 
       <section className="space-y-5 text-sm leading-relaxed text-muted-foreground">
-        <Section title="What BureauOS stores">
+        <Section title="What Building202 stores">
           <ul className="list-disc space-y-1 pl-5">
             <li>Your account: name, email address, state, and a one-way hash of your password (never the password itself).</li>
             <li>
@@ -40,27 +40,27 @@ export default function PrivacyPage() {
             </li>
             <li>Support tickets and the replies to them.</li>
             <li>A record of which terms version you accepted, and when.</li>
-            <li>A log of emails BureauOS sent you.</li>
+            <li>A log of emails Building202 sent you.</li>
             <li>Purchase records: amount, date, and status. Never card details.</li>
           </ul>
           <p>
-            BureauOS does not store uploaded documents — there is no upload feature. It has no
+            Building202 does not store uploaded documents — there is no upload feature. It has no
             advertising or third-party analytics, and it does not sell or rent your data.
           </p>
         </Section>
 
         <Section title="Who else handles it">
           <ul className="list-disc space-y-1 pl-5">
-            <li>Stripe processes payments. Your card details go to Stripe, not to BureauOS.</li>
+            <li>Stripe processes payments. Your card details go to Stripe, not to Building202.</li>
             <li>Resend delivers email: it receives your email address and the message.</li>
             <li>
               A rate-limiting service may receive a key derived from your IP address, used only to
               block abusive traffic.
             </li>
-            <li>The hosting and database providers store the data on BureauOS&apos;s behalf.</li>
+            <li>The hosting and database providers store the data on Building202&apos;s behalf.</li>
           </ul>
           <p>
-            BureauOS staff can see your case to answer support requests. Staff actions on your case
+            Building202 staff can see your case to answer support requests. Staff actions on your case
             are recorded in an audit log, and staff accounts must use two-factor sign-in.
           </p>
         </Section>
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
 
         <Section title="Your choices">
           <ul className="list-disc space-y-1 pl-5">
-            <li>Download everything BureauOS holds about your account: Settings → Your data.</li>
+            <li>Download everything Building202 holds about your account: Settings → Your data.</li>
             <li>Delete a single case from the case page, or your whole account from Settings.</li>
             <li>Choose which emails you receive: Settings → Notifications.</li>
           </ul>
@@ -86,7 +86,7 @@ export default function PrivacyPage() {
           <p>
             Connections are encrypted (HTTPS). Passwords are stored only as salted hashes, and
             changing your password signs out every device. No system is perfectly secure; if
-            BureauOS learns of a breach affecting your data, it will tell you as the law requires.
+            Building202 learns of a breach affecting your data, it will tell you as the law requires.
           </p>
         </Section>
       </section>

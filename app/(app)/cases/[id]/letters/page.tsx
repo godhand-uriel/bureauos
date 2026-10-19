@@ -185,7 +185,7 @@ export default function LettersPage({ params }: { params: Promise<{ id: string }
       </Card>
 
       <Callout variant="warning" title="Before you send">
-        These letters are starting points, not legal documents, and BureauOS does not send or file
+        These letters are starting points, not legal documents, and Building202 does not send or file
         anything for you. Fill every [BRACKETED] gap, verify names, numbers, and dates, and keep a
         copy of everything you send — ideally with delivery tracking.
       </Callout>

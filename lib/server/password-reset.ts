@@ -50,9 +50,9 @@ export async function requestPasswordReset(email: string): Promise<void> {
   await queueNotification(
     user.id,
     "account_security",
-    "Reset your BureauOS password",
+    "Reset your Building202 password",
     [
-      "Someone asked to reset the password for your BureauOS account. If it was you, use this link within 30 minutes:",
+      "Someone asked to reset the password for your Building202 account. If it was you, use this link within 30 minutes:",
       "",
       link,
       "",
@@ -88,8 +88,8 @@ export async function completePasswordReset(token: string, newPassword: string):
   await queueNotification(
     record.userId,
     "account_security",
-    "Your BureauOS password was reset",
-    "Your BureauOS password was just reset using an emailed link, and all devices were signed out. If this wasn't you, reset it again right away and contact support.",
+    "Your Building202 password was reset",
+    "Your Building202 password was just reset using an emailed link, and all devices were signed out. If this wasn't you, reset it again right away and contact support.",
   );
   return { ok: true };
 }

@@ -41,7 +41,7 @@ import {
 export { DEMO_ADMIN_EMAIL, DEMO_CUSTOMER_EMAIL, DEMO_PASSWORD, DISCLAIMER_VERSION };
 
 /**
- * BureauOS client data layer (v3 — server-backed).
+ * Building202 client data layer (v3 — server-backed).
  *
  * The database (Prisma/SQLite behind /api/*) is the source of truth. This
  * store is an in-memory, session-scoped cache:

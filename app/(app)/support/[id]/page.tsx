@@ -86,7 +86,7 @@ export default function TicketPage({ params }: { params: Promise<{ id: string }>
               )}
             >
               <p className="text-xs font-semibold">
-                {m.authorRole === "staff" ? `${m.authorName} · BureauOS` : m.authorName}
+                {m.authorRole === "staff" ? `${m.authorName} · Building202` : m.authorName}
               </p>
               <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed">{m.body}</p>
               <p className="mt-2 text-[10px] text-muted-foreground">{formatDateTime(m.createdAt)}</p>

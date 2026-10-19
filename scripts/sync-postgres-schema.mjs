@@ -18,7 +18,7 @@ const TARGET = path.join("prisma", "postgres", "schema.prisma");
 
 const HEADER = `// GENERATED FILE — DO NOT EDIT.
 // Source of truth: prisma/schema.prisma. Regenerate with \`npm run db:sync\`.
-// This is the PostgreSQL (production) variant of the BureauOS data model;
+// This is the PostgreSQL (production) variant of the Building202 data model;
 // its migrations live in prisma/postgres/migrations.
 `;
 

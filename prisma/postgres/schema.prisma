@@ -1,6 +1,6 @@
 // GENERATED FILE — DO NOT EDIT.
 // Source of truth: prisma/schema.prisma. Regenerate with `npm run db:sync`.
-// This is the PostgreSQL (production) variant of the BureauOS data model;
+// This is the PostgreSQL (production) variant of the Building202 data model;
 // its migrations live in prisma/postgres/migrations.
 
 datasource db {
@@ -236,7 +236,7 @@ model TimelineEvent {
 }
 
 // FROZEN: file uploads are disabled for launch (POST /api/files returns 410).
-// BureauOS never stored file bytes — rows here are name/type/size metadata
+// Building202 never stored file bytes — rows here are name/type/size metadata
 // recorded by earlier versions. The table is kept so those rows remain
 // exportable and deletable; nothing writes new ones.
 model UploadedFile {

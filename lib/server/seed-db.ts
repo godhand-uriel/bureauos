@@ -142,7 +142,7 @@ export async function seedDatabase(prisma: PrismaClient): Promise<{ seeded: bool
 
   await prisma.notificationEvent.createMany({
     data: [
-      { userId: customer.id, type: "welcome", channel: "email", subject: "Welcome to BureauOS", body: "Your account is set up. Start a case any time — your dashboard keeps everything organized.", status: "mock_sent" },
+      { userId: customer.id, type: "welcome", channel: "email", subject: "Welcome to Building202", body: "Your account is set up. Start a case any time — your dashboard keeps everything organized.", status: "mock_sent" },
       ...(humanReview
         ? [{ userId: customer.id, type: "review_update", channel: "email", subject: "Your review is in progress", body: "A reviewer is examining your MRI claim denial case file.", status: "mock_sent" }]
         : []),

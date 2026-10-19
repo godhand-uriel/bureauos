@@ -2,7 +2,7 @@ import { getNavigator } from "@/lib/navigators";
 import type { NavigatorDef } from "@/lib/types";
 
 /**
- * BureauOS assistant — a deterministic keyword router, not an AI model.
+ * Building202 assistant — a deterministic keyword router, not an AI model.
  *
  * It runs entirely in the browser: nothing typed into it is sent to a server
  * or a third party. The `AssistantProvider` interface is the seam a
@@ -53,7 +53,7 @@ export function matchNavigator(text: string): { nav: NavigatorDef; score: number
 }
 
 export const GREETING: { text: string; actions: AssistantAction[] } = {
-  text: "Hi — I'm the BureauOS assistant. Tell me what's going on in your own words, and I'll point you to the right navigator, explain what information you'll need, and set you up to start a case.\n\nA sentence or two is plenty. What are you dealing with?",
+  text: "Hi — I'm the Building202 assistant. Tell me what's going on in your own words, and I'll point you to the right navigator, explain what information you'll need, and set you up to start a case.\n\nA sentence or two is plenty. What are you dealing with?",
   actions: [
     { label: "My license got suspended", kind: "say", value: "My license got suspended" },
     { label: "I just lost my job", kind: "say", value: "I just lost my job" },
@@ -95,7 +95,7 @@ export const ruleBasedProvider: AssistantProvider = {
 
     if (/how does intake|intake work|what happens next/i.test(text) && matched) {
       return {
-        text: `Intake is ${matched.nav.questions.length} plain-language questions — things like what happened, which state you're in, and what documents you already have. Your progress saves after every question.\n\nWhen you finish, BureauOS generates an action plan from your answers: a summary of your situation, next steps, a document checklist, deadlines to track or verify, and any risk flags.`,
+        text: `Intake is ${matched.nav.questions.length} plain-language questions — things like what happened, which state you're in, and what documents you already have. Your progress saves after every question.\n\nWhen you finish, Building202 generates an action plan from your answers: a summary of your situation, next steps, a document checklist, deadlines to track or verify, and any risk flags.`,
         actions: [
           { label: `Start a ${matched.nav.shortName} case`, kind: "navigate", value: `/cases/new?navigator=${matched.nav.slug}` },
         ],

@@ -42,7 +42,7 @@ export default function SupportPage() {
         <EmptyState
           icon={LifeBuoy}
           title="No support tickets yet"
-          description="Open a ticket and the BureauOS team will follow up based on your service package."
+          description="Open a ticket and the Building202 team will follow up based on your service package."
           action={
             <Link href="/support/new">
               <Button>Open your first ticket</Button>
@@ -64,7 +64,7 @@ export default function SupportPage() {
                     </div>
                     <p className="line-clamp-1 text-sm text-muted-foreground">
                       {lastMessage
-                        ? `${lastMessage.authorRole === "staff" ? "BureauOS: " : "You: "}${lastMessage.body}`
+                        ? `${lastMessage.authorRole === "staff" ? "Building202: " : "You: "}${lastMessage.body}`
                         : "No messages yet."}
                     </p>
                     <p className="text-xs text-muted-foreground">

@@ -3,7 +3,7 @@ import { Callout } from "@/components/callout";
 import { LegalDraftNotice } from "@/components/legal-draft-notice";
 import { DISCLAIMER_VERSION } from "@/lib/constants";
 
-export const metadata: Metadata = { title: "Legal Disclaimer" };
+export const metadata: Metadata = { title: "Legal Disclaimer", alternates: { canonical: "/legal/disclaimer" } };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -23,7 +23,7 @@ export default function DisclaimerPage() {
       </div>
 
       <Callout variant="critical" title="The short version">
-        BureauOS is self-service software, not a law firm. It does not give legal advice, does not
+        Building202 is self-service software, not a law firm. It does not give legal advice, does not
         represent you, files nothing for you, and cannot promise any outcome.
       </Callout>
 
@@ -32,7 +32,7 @@ export default function DisclaimerPage() {
       <section className="space-y-5 text-sm leading-relaxed text-muted-foreground">
         <Section title="Not legal advice">
           <p>
-            Nothing in BureauOS — action plans, checklists, deadlines, letters, rule summaries, or
+            Nothing in Building202 — action plans, checklists, deadlines, letters, rule summaries, or
             helper responses — is legal advice, and none of it creates an attorney-client
             relationship. It is general information to help you get organized.
           </p>
@@ -42,16 +42,16 @@ export default function DisclaimerPage() {
           <p>
             A deadline marked as an official rule is calculated only from the date or dates the rule
             depends on, as you entered them (such as the distributed date on a determination), and a
-            rule BureauOS checked against the sources it cites, with the date of that check. If any of
+            rule Building202 checked against the sources it cites, with the date of that check. If any of
             those dates is missing, nothing is calculated. These calculations are currently available for Florida
             unemployment appeals, federal COBRA elections, and Marketplace special enrollment. The
-            rules have been checked against their sources by BureauOS but have not yet been reviewed
+            rules have been checked against their sources by Building202 but have not yet been reviewed
             by an attorney.
           </p>
           <p>
             If a date can&apos;t be established — a rule isn&apos;t verified for your state, or the
             triggering date isn&apos;t known — the deadline says NEEDS VERIFICATION rather than showing
-            a guess. Dates labeled as suggested are BureauOS follow-up targets, not legal deadlines.
+            a guess. Dates labeled as suggested are Building202 follow-up targets, not legal deadlines.
             In every case, <strong className="text-foreground">the date printed on your official notice controls</strong>,
             and you should confirm it with the agency.
           </p>
@@ -66,7 +66,7 @@ export default function DisclaimerPage() {
 
         <Section title="No human review">
           <p>
-            No one at BureauOS reviews your case, documents, or letters. Support can help with how the
+            No one at Building202 reviews your case, documents, or letters. Support can help with how the
             app works, not with what you should do.
           </p>
         </Section>

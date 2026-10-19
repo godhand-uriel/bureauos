@@ -145,7 +145,7 @@ const tenantRights: NavigatorDef = {
     },
   ],
   disclaimer:
-    "BureauOS helps you document issues, organize evidence, and communicate in writing. It is not legal advice. Tenant protections vary widely by state and city — before withholding rent or taking legal steps, talk to local legal aid or a tenant hotline (often free).",
+    "Building202 helps you document issues, organize evidence, and communicate in writing. It is not legal advice. Tenant protections vary widely by state and city — before withholding rent or taking legal steps, talk to local legal aid or a tenant hotline (often free).",
   buildPlan: (a): PlanResult => {
     const issue = (a.issue_type as string) || "other";
     const state = (a.state as string) || "your state";
@@ -190,7 +190,7 @@ const tenantRights: NavigatorDef = {
         { title: "Send a written demand letter", detail: "Demand the deposit or a lawful itemized statement, cite the state deadline, and set a response date. Small claims court is the standard next step and is designed for exactly this." },
       ];
       plan.extraDocuments.push({ name: "Move-out photos / video walkthrough", required: true }, { name: "Forwarding address proof sent to landlord", required: false, description: "Many states start the return clock when you provide a forwarding address in writing." });
-      plan.deadlines.push({ kind: "official_unavailable", key: "deposit-return", title: "Security deposit return deadline", note: `BureauOS has no verified rule for ${state}. Look up the exact deadline and compare it to your move-out date.` });
+      plan.deadlines.push({ kind: "official_unavailable", key: "deposit-return", title: "Security deposit return deadline", note: `Building202 has no verified rule for ${state}. Look up the exact deadline and compare it to your move-out date.` });
     } else if (issue === "eviction_notice") {
       plan.priority = "urgent";
       plan.situationSummary = `You received an eviction or lease-violation notice in ${state}. Notices have short, hard deadlines, and the single most important fact is this: an eviction notice is not an eviction — only a court can order you out, and tenants who respond on time have real options. Speed matters more than anything else here.`;

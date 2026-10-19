@@ -3,7 +3,7 @@ import type { NavigatorSlug } from "@/lib/types";
 /**
  * Commercial launch scope (client-safe constants — no environment access).
  *
- * BureauOS remains a six-navigator platform, but only navigators listed here
+ * Building202 remains a six-navigator platform, but only navigators listed here
  * have a paid product. Adding one is a launch decision: it needs verified
  * deadline rules (lib/deadline-rules.ts) and `launchStatus: "live"`.
  */

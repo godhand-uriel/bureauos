@@ -1,4 +1,4 @@
-// BureauOS — database schema. THIS FILE IS THE SOURCE OF TRUTH.
+// Building202 — database schema. THIS FILE IS THE SOURCE OF TRUTH.
 //
 // Two engines, one data model:
 //   - SQLite      local development and the default test run (this file,
@@ -250,7 +250,7 @@ model TimelineEvent {
 }
 
 // FROZEN: file uploads are disabled for launch (POST /api/files returns 410).
-// BureauOS never stored file bytes — rows here are name/type/size metadata
+// Building202 never stored file bytes — rows here are name/type/size metadata
 // recorded by earlier versions. The table is kept so those rows remain
 // exportable and deletable; nothing writes new ones.
 model UploadedFile {

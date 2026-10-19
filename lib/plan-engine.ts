@@ -311,7 +311,7 @@ export function nextActionFor(
       title: `Needs verification: ${unverified.title}`,
       detail: unverified.trigger
         ? `Add the ${lowerFirst(unverified.trigger.label)} so this deadline can be calculated.`
-        : "Find this deadline on your official notice — BureauOS could not establish it.",
+        : "Find this deadline on your official notice — Building202 could not establish it.",
       href: `/cases/${kase.id}/plan`,
     };
   }

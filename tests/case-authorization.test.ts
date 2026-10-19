@@ -160,7 +160,7 @@ describe("staff status changes", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       const evt = [...result.case.timeline].reverse().find((e) => e.type === "status_change");
-      expect(evt?.detail).toBe("Updated by BureauOS staff.");
+      expect(evt?.detail).toBe("Updated by Building202 staff.");
       expect(result.notifications.length).toBeGreaterThan(0);
       expect(result.notifications[0].userId).toBe(customer.id);
       expect(result.notifications[0].status).toBe("mock_sent");

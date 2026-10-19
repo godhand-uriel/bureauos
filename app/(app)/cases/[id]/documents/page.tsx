@@ -59,7 +59,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
         </CardContent>
       </Card>
 
-      <Callout variant="info" title="BureauOS doesn't store your documents">
+      <Callout variant="info" title="Building202 doesn't store your documents">
         This checklist tracks which documents you have — it doesn&apos;t collect them, and there is
         nothing to upload. Keep originals safe, work from copies, and note where each one is stored
         (physical folder, phone photos, or cloud drive) so you can produce it fast when an agency

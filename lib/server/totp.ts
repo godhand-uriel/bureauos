@@ -85,6 +85,6 @@ export function generateTotpSecret(): string {
 }
 
 export function buildOtpauthUrl(accountEmail: string, secretBase32: string): string {
-  const issuer = "BureauOS";
+  const issuer = "Building202";
   return `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(accountEmail)}?secret=${secretBase32}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
 }

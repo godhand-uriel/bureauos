@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       notificationPrefs: { create: { ...DEFAULT_NOTIFICATION_PREFS } },
     },
   });
-  await queueNotification(user.id, "welcome", "Welcome to BureauOS", "Your account is set up. Start a case any time.");
+  await queueNotification(user.id, "welcome", "Welcome to Building202", "Your account is set up. Start a case any time.");
 
   return NextResponse.json({ ok: true });
 }

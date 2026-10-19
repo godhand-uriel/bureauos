@@ -208,7 +208,7 @@ describe("GET /api/me/export", () => {
     currentUser = user;
     const res = await exportGET();
     expect(res.status).toBe(200);
-    expect(res.headers.get("content-disposition")).toMatch(/^attachment; filename="bureauos-export-\d{4}-\d{2}-\d{2}\.json"$/);
+    expect(res.headers.get("content-disposition")).toMatch(/^attachment; filename="building202-export-\d{4}-\d{2}-\d{2}\.json"$/);
     expect(res.headers.get("cache-control")).toBe("no-store");
 
     const raw = await res.text();

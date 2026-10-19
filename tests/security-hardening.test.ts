@@ -258,7 +258,7 @@ describe("staff MFA policy at sign-in", () => {
     currentUser = await prisma.user.findUniqueOrThrow({ where: { id: staff.id }, include: withPrefs });
     const begin = await (await mfaPOST()).json();
     expect(begin.secret).toMatch(/^[A-Z2-7]{32}$/);
-    expect(begin.otpauth).toContain("otpauth://totp/BureauOS");
+    expect(begin.otpauth).toContain("otpauth://totp/Building202");
 
     currentUser = await prisma.user.findUniqueOrThrow({ where: { id: staff.id }, include: withPrefs });
     expect((await mfaPUT(json({ code: "000000" }, "PUT"))).status).toBe(403);

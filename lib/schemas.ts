@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Zod schemas for BureauOS. The first half defines the domain enums and
+ * Zod schemas for Building202. The first half defines the domain enums and
  * shapes; the second half defines the input schema for every API route —
  * nothing reaches a route handler's logic unvalidated.
  */

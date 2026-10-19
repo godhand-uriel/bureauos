@@ -22,7 +22,7 @@ async function main() {
     return i >= 0 ? args[i + 1] : undefined;
   };
   const email = get("--email")?.toLowerCase();
-  const name = get("--name") ?? "BureauOS Staff";
+  const name = get("--name") ?? "Building202 Staff";
   if (!email || !email.includes("@")) {
     console.error('Usage: npm run admin:provision -- --email ops@example.com [--name "Ops Name"]');
     process.exit(1);

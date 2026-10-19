@@ -40,7 +40,7 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
         <Card>
           <CardContent className="space-y-3 p-6 text-sm leading-relaxed text-muted-foreground">
             <p>
-              BureauOS is self-service software right now. No one at BureauOS reviews your case,
+              Building202 is self-service software right now. No one at Building202 reviews your case,
               your documents, or your letters, and nothing is filed on your behalf.
             </p>
             <p>
@@ -72,9 +72,9 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
       </div>
 
       <Callout variant="info" title="What review is (and isn't)">
-        Review is an organizational check of your case file by the BureauOS team and, where
+        Review is an organizational check of your case file by the Building202 team and, where
         available, qualified professionals. It is not legal representation or legal advice, and
-        review availability depends on BureauOS operations. You always decide what to send and when.
+        review availability depends on Building202 operations. You always decide what to send and when.
       </Callout>
 
       {/* Status tracker */}
@@ -123,7 +123,7 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                 <div className="mt-2 space-y-2">
                   {review.reviewerNotes.map((n) => (
                     <div key={n.id} className="rounded-lg border border-violet-500/30 bg-violet-500/10 p-3.5 text-sm">
-                      <p className="text-xs font-semibold text-violet-300">{n.authorName} · BureauOS</p>
+                      <p className="text-xs font-semibold text-violet-300">{n.authorName} · Building202</p>
                       <p className="mt-1 leading-relaxed text-violet-100/90">{n.body}</p>
                       <p className="mt-1.5 text-[10px] text-violet-300/60">{formatDateTime(n.createdAt)}</p>
                     </div>
@@ -172,7 +172,7 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
           <CardContent className="p-6">
             <h3 className="font-semibold">Review isn&apos;t set up for this case</h3>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Human-assisted review is arranged case by case with the BureauOS team and can&apos;t be
+              Human-assisted review is arranged case by case with the Building202 team and can&apos;t be
               purchased online. Contact support if you&apos;d like to ask about it.
             </p>
             <Link href="/support/new" className="mt-4 inline-block">

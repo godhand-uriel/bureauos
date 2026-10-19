@@ -1,7 +1,7 @@
 import type { DefaultSession } from "next-auth";
 
 /**
- * Session/JWT type augmentation: BureauOS carries the user id, role, and the
+ * Session/JWT type augmentation: Building202 carries the user id, role, and the
  * account's session version (bumped on password change — see lib/server/auth.ts).
  */
 declare module "next-auth" {

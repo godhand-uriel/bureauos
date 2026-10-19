@@ -48,7 +48,7 @@ export default function BillingPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Billing</h1>
         <p className="mt-1 text-muted-foreground">
-          BureauOS is free to use. The only purchase is the optional {CASE_PASS_NAME}: {price}, one
+          Building202 is free to use. The only purchase is the optional {CASE_PASS_NAME}: {price}, one
           time, per case. There are no subscriptions.
         </p>
       </div>
@@ -89,7 +89,7 @@ export default function BillingPage() {
                 <p className="truncate text-sm font-medium">{caseTitle(e.caseId)}</p>
                 <p className="text-xs text-muted-foreground">
                   Active since {formatDate(e.grantedAt)}
-                  {e.source === "staff_grant" && " · granted by BureauOS staff"}
+                  {e.source === "staff_grant" && " · granted by Building202 staff"}
                   {e.source === "dev_simulation" && " · development simulation (no payment)"}
                 </p>
               </div>
